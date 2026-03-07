@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/database/db_helper.dart';
+import 'menu_manejo.dart';
 
 class PeaoScannerScreen extends StatefulWidget {
   @override
@@ -75,13 +76,19 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              // FUTURO: Aqui chamaremos a tela para registrar Inseminação/Morte
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Aba de manejo em construção...")),
-              );
-              _cameraController.start();
-              setState(() => _processando = false);
+              Navigator.pop(context); // Fecha o Pop-up
+
+              // Navega para a tela de Menu de Manejo passando os dados do animal
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MenuManejoScreen(animal: animal),
+                ),
+              ).then((_) {
+                // Quando voltar do menu, liga a câmera de novo
+                _cameraController.start();
+                setState(() => _processando = false);
+              });
             },
             child: Text("Registrar Manejo"),
             style: ElevatedButton.styleFrom(

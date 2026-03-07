@@ -111,4 +111,19 @@ class DatabaseHelper {
       orderBy: 'id DESC',
     ); // Traz os mais recentes primeiro
   }
+
+  Future<int> inserirDesmame(Map<String, dynamic> dados) async {
+    Database db = await instance.database;
+    return await db.insert('evento_desmame', dados);
+  }
+
+  Future<int> inserirInseminacao(Map<String, dynamic> dados) async {
+    Database db = await instance.database;
+    return await db.insert('evento_inseminacao', dados);
+  }
+
+  Future<int> inserirMorte(Map<String, dynamic> dados) async {
+    Database db = await instance.database;
+    return await db.insert('evento_morte', dados);
+  }
 }
