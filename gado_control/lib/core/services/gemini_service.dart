@@ -1,8 +1,9 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GeminiService {
-  // COLOQUE A SUA CHAVE NOVA AQUI (aquela que termina em Y2mw)
-  static const String _apiKey = 'AIzaSyBM2DXIPVVVrx60cl4iOvlAIu-GfmslPuQ';
+  // AGORA ELE PUXA DA MEMÓRIA SEGURA EM VEZ DE FICAR EXPOSTO:
+  static String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
 
   static Future<String> gerarRelatorio(String dadosDoGado) async {
     try {
