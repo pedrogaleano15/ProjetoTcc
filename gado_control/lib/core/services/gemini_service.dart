@@ -1,0 +1,26 @@
+import 'package:google_generative_ai/google_generative_ai.dart';
+
+class GeminiService {
+  // COLOQUE A SUA CHAVE NOVA AQUI (aquela que termina em Y2mw)
+  static const String _apiKey = 'AIzaSyBM2DXIPVVVrx60cl4iOvlAIu-GfmslPuQ';
+
+  static Future<String> gerarRelatorio(String dadosDoGado) async {
+    try {
+      print("Acessando a API (Forçando v1)...");
+
+      final model = GenerativeModel(
+        model: 'gemini-2.5-flash', // <-- A MÁGICA ACONTECE AQUI
+        apiKey: _apiKey,
+        // Pode remover o requestOptions se quiser, a versão 2.5 já é nativa na rota nova
+      );
+
+      final prompt =
+          'Atue como Zootecnista. Analise de forma resumida estes dados: $dadosDoGado';
+
+      final response = await model.generateContent([Content.text(prompt)]);
+      return response.text ?? "Sem resposta.";
+    } catch (e) {
+      return "Erro da API: $e";
+    }
+  }
+}

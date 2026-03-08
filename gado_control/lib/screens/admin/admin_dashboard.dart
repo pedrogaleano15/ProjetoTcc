@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/database/db_helper.dart';
 import '../forms/form_animal.dart';
+import 'relatorio_ia_screen.dart'; // Importação do novo ecrã de IA
 
 class AdminDashboard extends StatefulWidget {
   @override
@@ -13,15 +14,43 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    _atualizarLista(); // Carrega os dados quando a tela abre
+    _atualizarLista();
   }
 
-  // Busca os animais no SQLite
   void _atualizarLista() async {
     final dados = await DatabaseHelper.instance.listarAnimais();
     setState(() {
       _animais = dados;
     });
+  }
+
+  // --- NOVA FUNÇÃO: Compilar dados para a IA ---
+  void _prepararDadosParaIA() {
+    if (_animais.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Cadastre pelo menos um animal para gerar o relatório.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Transforma a lista do banco de dados num texto legível para o Gemini
+    String dadosCompilados = "DADOS DO REBANHO:\n\n";
+    for (var animal in _animais) {
+      dadosCompilados +=
+          "- Brinco: ${animal['identificacao']} | Raça: ${animal['raca']} | Sexo: ${animal['sexo']} | Peso Nasc.: ${animal['peso_nascimento']}kg\n";
+    }
+
+    // Navega para o ecrã da IA passando o texto compilado
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RelatorioIaScreen(dadosGado: dadosCompilados),
+      ),
+    );
   }
 
   @override
@@ -31,6 +60,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         title: Text("Painel Administrativo"),
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
+        actions: [
+          // <-- ESTA É A PARTE IMPORTANTE
+          IconButton(
+            icon: Icon(Icons.auto_awesome),
+            tooltip: 'Análise Inteligente',
+            onPressed: _prepararDadosParaIA,
+          ),
+        ],
       ),
       body: _animais.isEmpty
           ? Center(
@@ -48,9 +85,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor: Colors.green[100],
-                      child: Text(
-                        animal['sexo'].substring(0, 1).toUpperCase(),
-                      ), // M ou F
+                      child: Text(animal['sexo'].substring(0, 1).toUpperCase()),
                     ),
                     title: Text(
                       "Brinco: ${animal['identificacao']}",
@@ -64,18 +99,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 );
               },
             ),
-      // Botão flutuante para adicionar novo animal
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
         child: Icon(Icons.add),
         onPressed: () async {
-          // Navega para o formulário e espera ele fechar
           final recarregar = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => FormAnimalScreen()),
           );
-          // Se o formulário avisar que salvou algo (true), recarrega a lista
           if (recarregar == true) {
             _atualizarLista();
           }
