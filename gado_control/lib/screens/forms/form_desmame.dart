@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/database/db_helper.dart';
 
 class FormDesmameScreen extends StatefulWidget {
-  // Recebe os dados do animal vindo da tela anterior
   final Map<String, dynamic> animal;
-
   FormDesmameScreen({required this.animal});
 
   @override
@@ -13,33 +11,30 @@ class FormDesmameScreen extends StatefulWidget {
 
 class _FormDesmameScreenState extends State<FormDesmameScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  // Controladores para capturar os dados
   final _dataController = TextEditingController();
   final _pesoController = TextEditingController();
 
   void _salvarDesmame() async {
     if (_formKey.currentState!.validate()) {
-      // Prepara os dados no formato que o SQLite espera
       final dadosDesmame = {
-        'animal_id': widget.animal['id'], // Chave estrangeira!
+        'animal_id': widget.animal['id'],
         'data_desmame': _dataController.text,
-        'peso_desmame': double.tryParse(_pesoController.text) ?? 0.0,
+        'peso_desmame':
+            double.tryParse(_pesoController.text.replaceAll(',', '.')) ?? 0.0,
       };
 
-      // Chama a função de inserir no banco de dados
       await DatabaseHelper.instance.inserirDesmame(dadosDesmame);
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Desmame de ${widget.animal['identificacao']} registado com sucesso!',
+            'Desmame de ${widget.animal['identificacao'] ?? widget.animal['brinco']} registado!',
           ),
           backgroundColor: Colors.green,
         ),
       );
-
-      Navigator.pop(context); // Fecha o formulário e volta ao menu
+      Navigator.pop(context);
     }
   }
 
@@ -47,7 +42,9 @@ class _FormDesmameScreenState extends State<FormDesmameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Desmame: ${widget.animal['identificacao']}"),
+        title: Text(
+          "Desmame: ${widget.animal['identificacao'] ?? widget.animal['brinco']}",
+        ),
         backgroundColor: Colors.lightGreen[700],
         foregroundColor: Colors.white,
       ),
@@ -57,51 +54,88 @@ class _FormDesmameScreenState extends State<FormDesmameScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              // Aviso visual confirmando o animal
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 color: Colors.grey[200],
                 child: Text(
-                  "A registar desmame para o animal da raça ${widget.animal['raca']} (${widget.animal['sexo']})",
-                  style: TextStyle(fontStyle: FontStyle.italic),
+                  "A registar desmame para o animal da raça ${widget.animal['raca'] ?? '-'} (${widget.animal['sexo'] ?? '-'})",
+                  style: const TextStyle(fontStyle: FontStyle.italic),
                   textAlign: TextAlign.center,
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-              // Campo da Data
+              // NOVO CAMPO DE DATA E HORA INTERATIVO
               TextFormField(
                 controller: _dataController,
-                decoration: InputDecoration(
-                  labelText: 'Data do Desmame (DD/MM/AAAA)',
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: 'Data e Hora do Desmame',
+                  hintText: 'Toque para escolher...',
+                  prefixIcon: Icon(Icons.edit_calendar),
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.calendar_today),
                 ),
+                onTap: () async {
+                  DateTime? dataEscolhida = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (dataEscolhida != null) {
+                    TimeOfDay? horaEscolhida = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (horaEscolhida != null) {
+                      setState(() {
+                        String dia = dataEscolhida.day.toString().padLeft(
+                          2,
+                          '0',
+                        );
+                        String mes = dataEscolhida.month.toString().padLeft(
+                          2,
+                          '0',
+                        );
+                        String ano = dataEscolhida.year.toString();
+                        String hora = horaEscolhida.hour.toString().padLeft(
+                          2,
+                          '0',
+                        );
+                        String minuto = horaEscolhida.minute.toString().padLeft(
+                          2,
+                          '0',
+                        );
+                        _dataController.text = "$dia/$mes/$ano $hora:$minuto";
+                      });
+                    }
+                  }
+                },
                 validator: (value) =>
-                    value!.isEmpty ? 'Campo obrigatório' : null,
+                    value == null || value.isEmpty ? 'Campo obrigatório' : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-              // Campo do Peso
               TextFormField(
                 controller: _pesoController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Peso no Desmame (kg)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.scale),
                 ),
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 validator: (value) =>
                     value!.isEmpty ? 'Campo obrigatório' : null,
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
 
-              // Botão de Salvar
               ElevatedButton.icon(
                 onPressed: _salvarDesmame,
-                icon: Icon(Icons.save),
-                label: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                icon: const Icon(Icons.save),
+                label: const Padding(
+                  padding: EdgeInsets.all(16.0),
                   child: Text("Salvar Desmame", style: TextStyle(fontSize: 18)),
                 ),
                 style: ElevatedButton.styleFrom(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/database/db_helper.dart';
 import 'menu_manejo.dart';
+import 'perfil_animal_screen.dart';
 
 class PeaoScannerScreen extends StatefulWidget {
   @override
@@ -45,59 +46,92 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
   void _mostrarPopUpSucesso(Map<String, dynamic> animal) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Obriga o peão a clicar em um botão
-      builder: (context) => AlertDialog(
-        title: Text(
-          "✅ Animal Encontrado",
-          style: TextStyle(color: Colors.green[800]),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Brinco: ${animal['identificacao']}",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            SizedBox(height: 8),
-            Text("Raça: ${animal['raca']}"),
-            Text("Sexo: ${animal['sexo']}"),
-            Text("Peso Nasc.: ${animal['peso_nascimento']} kg"),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Fecha o Pop-Up
-              _cameraController.start(); // Liga a câmera de novo
-              setState(() => _processando = false);
-            },
-            child: Text("Ler Outro", style: TextStyle(color: Colors.grey[700])),
+      barrierDismissible: false, // Evita que o utilizador feche ao clicar fora
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context); // Fecha o Pop-up
-
-              // Navega para a tela de Menu de Manejo passando os dados do animal
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MenuManejoScreen(animal: animal),
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green[700], size: 30),
+              const SizedBox(width: 10),
+              const Text(
+                'Animal Encontrado!',
+                style: TextStyle(color: Colors.black87, fontSize: 20),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Brinco: ${animal['identificacao'] ?? animal['brinco']}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-              ).then((_) {
-                // Quando voltar do menu, liga a câmera de novo
-                _cameraController.start();
-                setState(() => _processando = false);
-              });
-            },
-            child: Text("Registrar Manejo"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[800],
-              foregroundColor: Colors.white,
-            ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Raça: ${animal['raca'] ?? '-'} | Sexo: ${animal['sexo'] ?? '-'}',
+                style: const TextStyle(fontSize: 16),
+              ),
+            ],
           ),
-        ],
-      ),
+          actions: [
+            // BOTÃO 1: CANCELAR (Volta para a câmara)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Fecha o pop-up
+
+                // Nota: Descomente a linha abaixo se usar _cameraController
+                // _cameraController.start();
+                setState(() => _processando = false);
+              },
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            ),
+
+            // BOTÃO 2: ABRIR FICHA E MANEJO (A Solução!)
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[800],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+              child: const Text(
+                'Abrir Ficha Completa',
+                style: TextStyle(fontSize: 16),
+              ),
+              onPressed: () {
+                // 1. Fecha o pop-up primeiro para não dar erro de contexto!
+                Navigator.pop(context);
+
+                // 2. Navega para o Perfil do Boi (onde está a gaveta de manejo)
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PerfilAnimalScreen(animal: animal),
+                  ),
+                ).then((_) {
+                  // 3. Quando o utilizador clicar na seta de voltar no perfil, a câmara acorda
+
+                  // Nota: Descomente a linha abaixo se usar _cameraController
+                  // _cameraController.start();
+                  setState(() => _processando = false);
+                });
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

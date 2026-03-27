@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 // Importações das telas de destino
 import '../admin/admin_dashboard.dart';
 import '../peao/peao_scanner_screen.dart';
+import '../peao/menu_manejo.dart';
 
 class LoginScreen extends StatelessWidget {
   @override
@@ -56,12 +57,11 @@ class LoginScreen extends StatelessWidget {
               // Botão do Peão (Operação de Campo)
               OutlinedButton.icon(
                 onPressed: () {
-                  // Navegação real para a Câmera do Peão (Aqui estava o erro antes!)
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => PeaoScannerScreen(),
-                    ),
+                      builder: (context) => const MenuManejoScreen(),
+                    ), // <-- Agora ele vai para o Dashboard!
                   );
                 },
                 icon: Icon(Icons.qr_code_scanner),

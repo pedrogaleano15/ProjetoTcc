@@ -3,7 +3,6 @@ import '../../core/database/db_helper.dart';
 
 class FormInseminacaoScreen extends StatefulWidget {
   final Map<String, dynamic> animal;
-
   FormInseminacaoScreen({required this.animal});
 
   @override
@@ -12,8 +11,6 @@ class FormInseminacaoScreen extends StatefulWidget {
 
 class _FormInseminacaoScreenState extends State<FormInseminacaoScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  // Controladores para capturar os dados do formulário
   final _dataController = TextEditingController();
   final _loteController = TextEditingController();
   final _pesoController = TextEditingController();
@@ -22,29 +19,28 @@ class _FormInseminacaoScreenState extends State<FormInseminacaoScreen> {
 
   void _guardarInseminacao() async {
     if (_formKey.currentState!.validate()) {
-      // Prepara os dados no formato para o SQLite
       final dadosInseminacao = {
         'animal_id': widget.animal['id'],
         'data_inseminacao': _dataController.text,
         'lote': _loteController.text,
-        'peso_momento': double.tryParse(_pesoController.text) ?? 0.0,
+        'peso_momento':
+            double.tryParse(_pesoController.text.replaceAll(',', '.')) ?? 0.0,
         'condicao_corporal': _condicaoController.text,
         'categoria': _categoriaController.text,
       };
 
-      // Chama a função de inserir no banco de dados (que criámos anteriormente)
       await DatabaseHelper.instance.inserirInseminacao(dadosInseminacao);
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Inseminação de ${widget.animal['identificacao']} registada com sucesso!',
+            'Inseminação de ${widget.animal['identificacao'] ?? widget.animal['brinco']} registada!',
           ),
           backgroundColor: Colors.blue,
         ),
       );
-
-      Navigator.pop(context); // Fecha o formulário e volta ao menu
+      Navigator.pop(context);
     }
   }
 
@@ -52,7 +48,9 @@ class _FormInseminacaoScreenState extends State<FormInseminacaoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Inseminação: ${widget.animal['identificacao']}"),
+        title: Text(
+          "Inseminação: ${widget.animal['identificacao'] ?? widget.animal['brinco']}",
+        ),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
       ),
@@ -62,84 +60,121 @@ class _FormInseminacaoScreenState extends State<FormInseminacaoScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              // Aviso visual confirmando o animal
               Container(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 color: Colors.grey[200],
                 child: Text(
-                  "A registar inseminação para o animal da raça ${widget.animal['raca']}",
-                  style: TextStyle(fontStyle: FontStyle.italic),
+                  "A registar inseminação para o animal da raça ${widget.animal['raca'] ?? '-'}",
+                  style: const TextStyle(fontStyle: FontStyle.italic),
                   textAlign: TextAlign.center,
                 ),
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
+              // NOVO CAMPO DE DATA E HORA INTERATIVO
               TextFormField(
                 controller: _dataController,
-                decoration: InputDecoration(
-                  labelText: 'Data da Inseminação (DD/MM/AAAA)',
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: 'Data e Hora da Inseminação',
+                  hintText: 'Toque para escolher...',
+                  prefixIcon: Icon(Icons.edit_calendar),
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.calendar_today),
                 ),
+                onTap: () async {
+                  DateTime? dataEscolhida = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (dataEscolhida != null) {
+                    TimeOfDay? horaEscolhida = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (horaEscolhida != null) {
+                      setState(() {
+                        String dia = dataEscolhida.day.toString().padLeft(
+                          2,
+                          '0',
+                        );
+                        String mes = dataEscolhida.month.toString().padLeft(
+                          2,
+                          '0',
+                        );
+                        String ano = dataEscolhida.year.toString();
+                        String hora = horaEscolhida.hour.toString().padLeft(
+                          2,
+                          '0',
+                        );
+                        String minuto = horaEscolhida.minute.toString().padLeft(
+                          2,
+                          '0',
+                        );
+                        _dataController.text = "$dia/$mes/$ano $hora:$minuto";
+                      });
+                    }
+                  }
+                },
                 validator: (value) =>
-                    value!.isEmpty ? 'Campo obrigatório' : null,
+                    value == null || value.isEmpty ? 'Campo obrigatório' : null,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               TextFormField(
                 controller: _loteController,
-                decoration: InputDecoration(
-                  labelText: 'Lote (Ex: Lote A, Lote Inverno)',
+                decoration: const InputDecoration(
+                  labelText: 'Lote (Ex: Lote A)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.group),
                 ),
                 validator: (value) =>
                     value!.isEmpty ? 'Campo obrigatório' : null,
               ),
-              SizedBox(height: 16),
-
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _pesoController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Peso no Momento (kg)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.scale),
                 ),
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 validator: (value) =>
                     value!.isEmpty ? 'Campo obrigatório' : null,
               ),
-              SizedBox(height: 16),
-
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _condicaoController,
-                decoration: InputDecoration(
-                  labelText: 'Condição Corporal (Ex: Escore 1 a 5)',
+                decoration: const InputDecoration(
+                  labelText: 'Condição Corporal (1 a 5)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.monitor_weight),
                 ),
                 validator: (value) =>
                     value!.isEmpty ? 'Campo obrigatório' : null,
               ),
-              SizedBox(height: 16),
-
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _categoriaController,
-                decoration: InputDecoration(
-                  labelText: 'Categoria (Ex: Novilha, Vaca Parida)',
+                decoration: const InputDecoration(
+                  labelText: 'Categoria (Ex: Novilha)',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.category),
                 ),
                 validator: (value) =>
                     value!.isEmpty ? 'Campo obrigatório' : null,
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
 
               ElevatedButton.icon(
                 onPressed: _guardarInseminacao,
-                icon: Icon(Icons.save),
-                label: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                icon: const Icon(Icons.save),
+                label: const Padding(
+                  padding: EdgeInsets.all(16.0),
                   child: Text(
                     "Guardar Inseminação",
                     style: TextStyle(fontSize: 18),

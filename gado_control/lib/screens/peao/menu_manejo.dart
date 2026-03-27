@@ -1,124 +1,152 @@
 import 'package:flutter/material.dart';
-import '../forms/form_desmame.dart';
-import '../forms/form_inseminacao.dart';
-import '../forms/form_morte.dart';
+import '../../core/database/db_helper.dart';
+import '../forms/form_animal.dart';
+import 'peao_scanner_screen.dart';
+import 'perfil_animal_screen.dart';
 
-class MenuManejoScreen extends StatelessWidget {
-  // A tela recebe os dados do animal que foi lido no QR Code
-  final Map<String, dynamic> animal;
+class MenuManejoScreen extends StatefulWidget {
+  const MenuManejoScreen({Key? key}) : super(key: key);
 
-  MenuManejoScreen({required this.animal});
+  @override
+  _MenuManejoScreenState createState() => _MenuManejoScreenState();
+}
+
+class _MenuManejoScreenState extends State<MenuManejoScreen> {
+  List<Map<String, dynamic>> _animais = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _atualizarLista();
+  }
+
+  Future<void> _atualizarLista() async {
+    final dados = await DatabaseHelper.instance.listarAnimais();
+    setState(() {
+      _animais = dados;
+      _isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Manejo: ${animal['identificacao']}"),
-        backgroundColor: Colors.green[800],
-        foregroundColor: Colors.white,
+        title: const Text('Manejo do Gado'),
+        backgroundColor: Colors.green[700],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Resumo do Animal no topo
-            Card(
-              color: Colors.green[50],
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    Text(
-                      "Animal Selecionado",
-                      style: TextStyle(
-                        color: Colors.green[900],
-                        fontWeight: FontWeight.bold,
-                      ),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            color: Colors.green[50],
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    label: const Text(
+                      'Novo Boi',
+                      style: TextStyle(color: Colors.white),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      "Brinco: ${animal['identificacao']} | Raça: ${animal['raca']}",
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    Text("Sexo: ${animal['sexo']}"),
-                  ],
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FormAnimalScreen(),
+                        ),
+                      );
+                      _atualizarLista();
+                    },
+                  ),
                 ),
-              ),
-            ),
-            SizedBox(height: 30),
-
-            Text(
-              "Selecione a operação:",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 20),
-
-            // Botão 1: Desmame
-            ElevatedButton.icon(
-              icon: Icon(Icons.grass),
-              label: Text("Registrar Desmame", style: TextStyle(fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.lightGreen[700],
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                // Navega para o formulário de desmame enviando o animal atual
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FormDesmameScreen(animal: animal),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(
+                      Icons.qr_code_scanner,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'Ler QR',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700],
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PeaoScannerScreen(),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ],
             ),
-            SizedBox(height: 16),
-
-            // Botão 2: Inseminação
-            ElevatedButton.icon(
-              icon: Icon(Icons.science),
-              label: Text(
-                "Registrar Inseminação",
-                style: TextStyle(fontSize: 16),
-              ),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.blue[700],
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                // Navega para o formulário de inseminação enviando o animal atual
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FormInseminacaoScreen(animal: animal),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _animais.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Nenhum animal registrado ainda no curral.',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _animais.length,
+                    itemBuilder: (context, index) {
+                      final animal = _animais[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        elevation: 2,
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.green[100],
+                            child: Icon(Icons.pets, color: Colors.green[800]),
+                          ),
+                          title: Text(
+                            'Brinco: ${animal['identificacao'] ?? animal['brinco']}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Raça: ${animal['raca'] ?? '-'} | Sexo: ${animal['sexo'] ?? '-'}',
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    PerfilAnimalScreen(animal: animal),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
-            SizedBox(height: 16),
-
-            // Botão 3: Morte
-            ElevatedButton.icon(
-              icon: Icon(Icons.warning_amber_rounded),
-              label: Text("Registrar Morte", style: TextStyle(fontSize: 16)),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.red[700],
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FormMorteScreen(animal: animal),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

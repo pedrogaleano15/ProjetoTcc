@@ -20,7 +20,6 @@ class Animal {
   // Transforma o Objeto Dart em um formato que o SQLite entende (Map)
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'identificacao': identificacao,
       'sexo': sexo,
       'raca': raca,
