@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/database/db_helper.dart';
-import 'menu_manejo.dart';
 import 'perfil_animal_screen.dart';
 
 class PeaoScannerScreen extends StatefulWidget {

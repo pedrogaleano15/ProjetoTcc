@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-// Importações das telas de destino
 import '../admin/admin_dashboard.dart';
-import '../peao/peao_scanner_screen.dart';
 import '../peao/menu_manejo.dart';
 
 class LoginScreen extends StatelessWidget {
