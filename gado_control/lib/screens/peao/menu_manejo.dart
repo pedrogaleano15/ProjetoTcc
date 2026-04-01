@@ -40,7 +40,9 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
         title: const Text('Observação Geral (Opcional)'),
         content: TextField(
           controller: _obsRebanhoController,
-          decoration: const InputDecoration(hintText: 'Anotações para o rodapé do PDF...'),
+          decoration: const InputDecoration(
+            hintText: 'Anotações para o rodapé do PDF...',
+          ),
         ),
         actions: [
           TextButton(
@@ -51,14 +53,18 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
             onPressed: () {
               Navigator.pop(context); // Fecha a caixa de texto
               Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (context) => RelatorioVacinacaoScreen(observacoesGerais: _obsRebanhoController.text))
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RelatorioVacinacaoScreen(
+                    observacoesGerais: _obsRebanhoController.text,
+                  ),
+                ),
               );
             },
             child: const Text('Gerar PDF'),
-          )
+          ),
         ],
-      )
+      ),
     );
   }
 
@@ -75,46 +81,94 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
             padding: const EdgeInsets.all(16.0),
             color: Colors.green[50],
             child: Wrap(
-              spacing: 10, 
-              runSpacing: 10, 
+              spacing: 10,
+              runSpacing: 10,
               alignment: WrapAlignment.spaceEvenly,
               children: [
                 // 1. NOVO BOI
                 ElevatedButton.icon(
                   icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                  label: const Text('Novo', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700]),
+                  label: const Text(
+                    'Novo',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[700],
+                  ),
                   onPressed: () async {
-                    await Navigator.push(context, MaterialPageRoute(builder: (context) => FormAnimalScreen()));
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FormAnimalScreen(),
+                      ),
+                    );
                     _atualizarLista();
                   },
                 ),
 
                 // 2. LER QR CODE
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 18),
-                  label: const Text('Scanner', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[700]),
+                  icon: const Icon(
+                    Icons.qr_code_scanner,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Scanner',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[700],
+                  ),
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => PeaoScannerScreen()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PeaoScannerScreen(),
+                      ),
+                    );
                   },
                 ),
 
                 // 3. RELATÓRIO DO REBANHO
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.analytics, color: Colors.white, size: 18),
-                  label: const Text('Rebanho', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[800]),
+                  icon: const Icon(
+                    Icons.analytics,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Rebanho',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange[800],
+                  ),
                   onPressed: _gerarRelatorioRebanho,
                 ),
 
                 // 4. CRONOGRAMA INTERATIVO (O BOTÃO QUE TINHA SUMIDO!)
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.calendar_month, color: Colors.white, size: 18),
-                  label: const Text('Cronograma', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey[800]),
+                  icon: const Icon(
+                    Icons.calendar_month,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  label: const Text(
+                    'Cronograma',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueGrey[800],
+                  ),
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ConfigurarCronogramaScreen()));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const ConfigurarCronogramaScreen(),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -137,7 +191,10 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
                     itemBuilder: (context, index) {
                       final animal = _animais[index];
                       return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         elevation: 2,
                         child: ListTile(
                           leading: CircleAvatar(
@@ -146,14 +203,25 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
                           ),
                           title: Text(
                             'Brinco: ${animal['identificacao'] ?? animal['brinco']}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
                           ),
-                          subtitle: Text('Raça: ${animal['raca'] ?? '-'} | Sexo: ${animal['sexo'] ?? '-'}'),
-                          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                          subtitle: Text(
+                            'Raça: ${animal['raca'] ?? '-'} | Sexo: ${animal['sexo'] ?? '-'}',
+                          ),
+                          trailing: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                          ),
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => PerfilAnimalScreen(animal: animal)),
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    PerfilAnimalScreen(animal: animal),
+                              ),
                             );
                           },
                         ),

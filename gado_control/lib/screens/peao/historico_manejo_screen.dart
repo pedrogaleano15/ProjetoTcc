@@ -23,7 +23,7 @@ class _HistoricoManejoScreenState extends State<HistoricoManejoScreen> {
   Future<void> _carregarHistorico() async {
     final animalId = widget.animal['id'];
 
-    // Busca TODOS os eventos no banco de dados, INCLUINDO AS VACINAS!
+    // 1. Busca TODOS os eventos no banco de dados primeiro!
     final vacinas = await DatabaseHelper.instance.listarVacinasPorAnimal(
       animalId,
     );
@@ -35,10 +35,14 @@ class _HistoricoManejoScreenState extends State<HistoricoManejoScreen> {
     final mortes = await DatabaseHelper.instance.listarMortesPorAnimal(
       animalId,
     );
+    final pesagens = await DatabaseHelper.instance.listarPesagensPorAnimal(
+      animalId,
+    );
 
+    // 2. Cria a lista vazia
     List<Map<String, dynamic>> tempLista = [];
 
-    // 1. Adiciona as Vacinas na lista
+    // 3. Preenche a lista com cada tipo de evento
     for (var v in vacinas) {
       tempLista.add({
         'tipo': 'Vacina',
@@ -46,7 +50,7 @@ class _HistoricoManejoScreenState extends State<HistoricoManejoScreen> {
         'detalhe': 'Vacina: ${v['nomeVacina'] ?? v['nome_vacina']}',
       });
     }
-    // 2. Adiciona os Desmames
+
     for (var d in desmames) {
       tempLista.add({
         'tipo': 'Desmame',
@@ -54,7 +58,7 @@ class _HistoricoManejoScreenState extends State<HistoricoManejoScreen> {
         'detalhe': 'Peso: ${d['peso_desmame']} kg',
       });
     }
-    // 3. Adiciona as Inseminações
+
     for (var i in inseminacoes) {
       tempLista.add({
         'tipo': 'Inseminação',
@@ -62,12 +66,20 @@ class _HistoricoManejoScreenState extends State<HistoricoManejoScreen> {
         'detalhe': 'Lote: ${i['lote']} | Condição: ${i['condicao_corporal']}',
       });
     }
-    // 4. Adiciona a Morte
+
     for (var m in mortes) {
       tempLista.add({
         'tipo': 'Morte',
         'data': m['data_morte'],
         'detalhe': 'Causa: ${m['causa']} | Local: ${m['local']}',
+      });
+    }
+
+    for (var p in pesagens) {
+      tempLista.add({
+        'tipo': 'Pesagem',
+        'data': p['data_pesagem'],
+        'detalhe': 'Peso registado: ${p['peso']} kg',
       });
     }
 
@@ -102,6 +114,7 @@ class _HistoricoManejoScreenState extends State<HistoricoManejoScreen> {
                 IconData icone = Icons.check;
                 Color cor = Colors.grey;
 
+                // A regra da cor da Pesagem fica aqui, junto com as outras regras!
                 if (item['tipo'] == 'Vacina') {
                   icone = Icons.vaccines;
                   cor = Colors.blue;
@@ -114,6 +127,9 @@ class _HistoricoManejoScreenState extends State<HistoricoManejoScreen> {
                 } else if (item['tipo'] == 'Morte') {
                   icone = Icons.warning;
                   cor = Colors.black;
+                } else if (item['tipo'] == 'Pesagem') {
+                  icone = Icons.scale;
+                  cor = Colors.teal;
                 }
 
                 return Card(

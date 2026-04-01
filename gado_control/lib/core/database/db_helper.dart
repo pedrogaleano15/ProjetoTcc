@@ -3,10 +3,9 @@ import 'package:path/path.dart';
 
 class DatabaseHelper {
   static const _databaseName = "GadoControlDB.db";
-  static const _databaseVersion =
-      3; // Versão 3 forçará o reset automático do banco
+  // Versão 4: Adiciona peso_atual e corrige os REFERENCES
+  static const _databaseVersion = 4;
 
-  // Singleton pattern (Padrão de projeto para usar a mesma conexão)
   DatabaseHelper._privateConstructor();
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
 
@@ -24,15 +23,12 @@ class DatabaseHelper {
       path,
       version: _databaseVersion,
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade, // Vai limpar o banco velho e aplicar a versão 3
+      onUpgrade: _onUpgrade,
     );
   }
 
-  // ==========================================
-  // A MÁGICA ACONTECE AQUI: Criação das tabelas
-  // ==========================================
   Future _onCreate(Database db, int version) async {
-    // 1. Tabela do Animal (AGORA COMPLETA E COM OS NOMES CERTOS)
+    // 1. Tabela do Animal (ADICIONADA A COLUNA peso_atual)
     await db.execute('''
       CREATE TABLE animais (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,11 +37,12 @@ class DatabaseHelper {
         raca TEXT,
         mae_identificacao TEXT,
         data_nascimento TEXT,
-        peso_nascimento REAL
+        peso_nascimento REAL,
+        peso_atual REAL 
       )
     ''');
 
-    // 2. Tabela de Pesagens (Gráfico)
+    // 2. Tabela de Pesagens
     await db.execute('''
       CREATE TABLE pesagens (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +53,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // 3. Tabela de Vacinas (Saúde)
+    // 3. Tabela de Vacinas
     await db.execute('''
       CREATE TABLE vacinas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,7 +65,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // 4. Tabela de Doenças (Saúde)
+    // 4. Tabela de Doenças
     await db.execute('''
       CREATE TABLE doencas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +78,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // 5. Tabela de Dietas (Nutrição)
+    // 5. Tabela de Dietas
     await db.execute('''
       CREATE TABLE dietas (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,15 +91,14 @@ class DatabaseHelper {
       )
     ''');
 
-    // 6. Tabelas de Manejo (Desmame, Inseminação, Morte)
-    // Criação da tabela de Desmame
+    // 6. Tabelas de Manejo (Corrigido para REFERENCES animais)
     await db.execute('''
         CREATE TABLE desmame (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           animal_id INTEGER,
           data_desmame TEXT,
           peso_desmame REAL,
-          FOREIGN KEY (animal_id) REFERENCES animal (id) ON DELETE CASCADE
+          FOREIGN KEY (animal_id) REFERENCES animais (id) ON DELETE CASCADE
         )
       ''');
 
@@ -115,11 +111,10 @@ class DatabaseHelper {
           peso_momento REAL,
           condicao_corporal TEXT,
           categoria TEXT,
-          FOREIGN KEY (animal_id) REFERENCES animal (id) ON DELETE CASCADE
+          FOREIGN KEY (animal_id) REFERENCES animais (id) ON DELETE CASCADE
         )
       ''');
 
-    // Criação da tabela de Morte
     await db.execute('''
         CREATE TABLE morte (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,14 +123,12 @@ class DatabaseHelper {
           local TEXT,
           causa TEXT,
           idade_meses INTEGER,
-          FOREIGN KEY (animal_id) REFERENCES animal (id) ON DELETE CASCADE
+          FOREIGN KEY (animal_id) REFERENCES animais (id) ON DELETE CASCADE
         )
       ''');
   }
 
-  // Função para lidar com a atualização do banco de dados na fase de testes
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Apaga as tabelas velhas (se existirem) para não dar conflito
     await db.execute("DROP TABLE IF EXISTS pesagens");
     await db.execute("DROP TABLE IF EXISTS vacinas");
     await db.execute("DROP TABLE IF EXISTS doencas");
@@ -144,7 +137,6 @@ class DatabaseHelper {
     await db.execute("DROP TABLE IF EXISTS inseminacao");
     await db.execute("DROP TABLE IF EXISTS morte");
     await db.execute("DROP TABLE IF EXISTS animais");
-    // Cria tudo limpinho e zerado
     await _onCreate(db, newVersion);
   }
 
@@ -152,43 +144,68 @@ class DatabaseHelper {
   // FUNÇÕES DE COMUNICAÇÃO (CRUD)
   // ==========================================
 
-  // Inserir Animal
   Future<int> inserirAnimal(Map<String, dynamic> row) async {
     Database db = await instance.database;
+    // Lógica: Ao nascer, o peso atual é igual ao peso de nascimento!
+    row['peso_atual'] = row['peso_nascimento'];
     return await db.insert('animais', row);
   }
 
-  // Listar Animais
   Future<List<Map<String, dynamic>>> listarAnimais() async {
     Database db = await instance.database;
     return await db.query('animais');
   }
 
-  // Inserir Desmame
+  // --- A MÁGICA DO PESO: ATUALIZA A FICHA DO ANIMAL ---
+  Future<int> atualizarPesoAnimal(int id, double novoPeso) async {
+    Database db = await instance.database;
+    return await db.update(
+      'animais',
+      {'peso_atual': novoPeso},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  // --- FUNÇÕES DA PESAGEM ---
+  Future<int> inserirPesagem(Map<String, dynamic> row) async {
+    Database db = await instance.database;
+    return await db.insert('pesagens', row);
+  }
+
+  Future<List<Map<String, dynamic>>> listarPesagensPorAnimal(
+    int animalId,
+  ) async {
+    Database db = await instance.database;
+    return await db.query(
+      'pesagens',
+      where: 'animal_id = ?',
+      whereArgs: [animalId],
+      orderBy: 'id DESC',
+    );
+  }
+
+  // --- OUTRAS FUNÇÕES EXISTENTES ---
   Future<int> inserirDesmame(Map<String, dynamic> row) async {
     Database db = await instance.database;
     return await db.insert('desmame', row);
   }
 
-  // Inserir Inseminação
   Future<int> inserirInseminacao(Map<String, dynamic> row) async {
     Database db = await instance.database;
     return await db.insert('inseminacao', row);
   }
 
-  // Inserir Morte
   Future<int> inserirMorte(Map<String, dynamic> row) async {
     Database db = await instance.database;
     return await db.insert('morte', row);
   }
 
-  // Inserir Vacina
   Future<int> inserirVacina(Map<String, dynamic> row) async {
     Database db = await instance.database;
     return await db.insert('vacinas', row);
   }
 
-  // Listar Vacinas do Boi
   Future<List<Map<String, dynamic>>> listarVacinasPorAnimal(
     int animalId,
   ) async {
@@ -200,7 +217,6 @@ class DatabaseHelper {
       orderBy: 'id DESC',
     );
   }
-  // --- FUNÇÕES DE LER O HISTÓRICO ---
 
   Future<List<Map<String, dynamic>>> listarDesmamesPorAnimal(
     int animalId,
@@ -230,6 +246,35 @@ class DatabaseHelper {
       'morte',
       where: 'animal_id = ?',
       whereArgs: [animalId],
+    );
+  }
+
+  // --- FUNÇÕES DE SAÚDE E DOENÇAS ---
+  Future<int> inserirDoenca(Map<String, dynamic> row) async {
+    Database db = await instance.database;
+    return await db.insert('doencas', row);
+  }
+
+  Future<List<Map<String, dynamic>>> listarDoencasPorAnimal(
+    int animalId,
+  ) async {
+    Database db = await instance.database;
+    return await db.query(
+      'doencas',
+      where: 'animal_id = ?',
+      whereArgs: [animalId],
+      orderBy: 'id DESC',
+    );
+  }
+
+  // Função para dar "Alta" ao animal (Curar)
+  Future<int> curarDoenca(int idDoenca, String tratamentoFinal) async {
+    Database db = await instance.database;
+    return await db.update(
+      'doencas',
+      {'status_cura': 'Curado', 'tratamento_aplicado': tratamentoFinal},
+      where: 'id = ?',
+      whereArgs: [idDoenca],
     );
   }
 }

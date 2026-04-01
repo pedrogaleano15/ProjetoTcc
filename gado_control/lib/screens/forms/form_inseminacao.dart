@@ -46,6 +46,43 @@ class _FormInseminacaoScreenState extends State<FormInseminacaoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // REGRA DE NEGÓCIO: TRAVA CONTRA MACHOS
+    if (widget.animal['sexo'] == 'Macho') {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text("Ação Bloqueada"),
+          backgroundColor: Colors.red[800],
+          foregroundColor: Colors.white,
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.block, color: Colors.red, size: 80),
+              const SizedBox(height: 16),
+              const Text(
+                "Operação Inválida!",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  "O sistema de gestão impede o registo de inseminação artificial ou natural em animais do sexo masculino.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Voltar"),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Se for Fêmea, carrega o formulário normal abaixo:
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -64,109 +101,75 @@ class _FormInseminacaoScreenState extends State<FormInseminacaoScreen> {
                 padding: const EdgeInsets.all(12),
                 color: Colors.grey[200],
                 child: Text(
-                  "A registar inseminação para o animal da raça ${widget.animal['raca'] ?? '-'}",
+                  "A registar inseminação para a fêmea da raça ${widget.animal['raca'] ?? '-'}",
                   style: const TextStyle(fontStyle: FontStyle.italic),
                   textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 20),
 
-              // NOVO CAMPO DE DATA E HORA INTERATIVO
               TextFormField(
                 controller: _dataController,
                 readOnly: true,
                 decoration: const InputDecoration(
-                  labelText: 'Data e Hora da Inseminação',
-                  hintText: 'Toque para escolher...',
+                  labelText: 'Data e Hora',
                   prefixIcon: Icon(Icons.edit_calendar),
                   border: OutlineInputBorder(),
                 ),
                 onTap: () async {
-                  DateTime? dataEscolhida = await showDatePicker(
+                  DateTime? data = await showDatePicker(
                     context: context,
                     initialDate: DateTime.now(),
                     firstDate: DateTime(2000),
                     lastDate: DateTime(2100),
                   );
-                  if (dataEscolhida != null) {
-                    TimeOfDay? horaEscolhida = await showTimePicker(
+                  if (data != null) {
+                    TimeOfDay? hora = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay.now(),
                     );
-                    if (horaEscolhida != null) {
+                    if (hora != null) {
                       setState(() {
-                        String dia = dataEscolhida.day.toString().padLeft(
-                          2,
-                          '0',
-                        );
-                        String mes = dataEscolhida.month.toString().padLeft(
-                          2,
-                          '0',
-                        );
-                        String ano = dataEscolhida.year.toString();
-                        String hora = horaEscolhida.hour.toString().padLeft(
-                          2,
-                          '0',
-                        );
-                        String minuto = horaEscolhida.minute.toString().padLeft(
-                          2,
-                          '0',
-                        );
-                        _dataController.text = "$dia/$mes/$ano $hora:$minuto";
+                        String d = data.day.toString().padLeft(2, '0');
+                        String m = data.month.toString().padLeft(2, '0');
+                        String a = data.year.toString();
+                        String h = hora.hour.toString().padLeft(2, '0');
+                        String min = hora.minute.toString().padLeft(2, '0');
+                        _dataController.text = "$d/$m/$a $h:$min";
                       });
                     }
                   }
                 },
                 validator: (value) =>
-                    value == null || value.isEmpty ? 'Campo obrigatório' : null,
+                    value == null || value.isEmpty ? 'Obrigatório' : null,
               ),
               const SizedBox(height: 16),
-
               TextFormField(
                 controller: _loteController,
                 decoration: const InputDecoration(
-                  labelText: 'Lote (Ex: Lote A)',
-                  border: OutlineInputBorder(),
+                  labelText: 'Lote do Sêmen',
                   prefixIcon: Icon(Icons.group),
+                  border: OutlineInputBorder(),
                 ),
-                validator: (value) =>
-                    value!.isEmpty ? 'Campo obrigatório' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _pesoController,
                 decoration: const InputDecoration(
                   labelText: 'Peso no Momento (kg)',
-                  border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.scale),
+                  border: OutlineInputBorder(),
                 ),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                validator: (value) =>
-                    value!.isEmpty ? 'Campo obrigatório' : null,
+                keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _condicaoController,
                 decoration: const InputDecoration(
                   labelText: 'Condição Corporal (1 a 5)',
-                  border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.monitor_weight),
-                ),
-                validator: (value) =>
-                    value!.isEmpty ? 'Campo obrigatório' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _categoriaController,
-                decoration: const InputDecoration(
-                  labelText: 'Categoria (Ex: Novilha)',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.category),
                 ),
-                validator: (value) =>
-                    value!.isEmpty ? 'Campo obrigatório' : null,
               ),
               const SizedBox(height: 30),
 
