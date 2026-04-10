@@ -1,117 +1,130 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
-import '../forms/form_animal.dart';
-import 'relatorio_ia_screen.dart'; // Importação do novo ecrã de IA
+import '../dashboard/dashboard_screen.dart'; // A Tela de BI (Gráficos)
+import '../relatorios/historico_movimentacoes_screen.dart'; // O Livro de Registros
+import '../dashboard/menu_manejo.dart'; // A Tela de Rebanho Completo
 
-class AdminDashboard extends StatefulWidget {
-  @override
-  _AdminDashboardState createState() => _AdminDashboardState();
-}
-
-class _AdminDashboardState extends State<AdminDashboard> {
-  List<Map<String, dynamic>> _animais = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _atualizarLista();
-  }
-
-  void _atualizarLista() async {
-    final dados = await DatabaseHelper.instance.listarAnimais();
-    setState(() {
-      _animais = dados;
-    });
-  }
-
-  // --- NOVA FUNÇÃO: Compilar dados para a IA ---
-  void _prepararDadosParaIA() {
-    if (_animais.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Cadastre pelo menos um animal para gerar o relatório.",
-          ),
-        ),
-      );
-      return;
-    }
-
-    // Transforma a lista do banco de dados num texto legível para o Gemini
-    String dadosCompilados = "DADOS DO REBANHO:\n\n";
-    for (var animal in _animais) {
-      dadosCompilados +=
-          "- Brinco: ${animal['identificacao']} | Raça: ${animal['raca']} | Sexo: ${animal['sexo']} | Peso Nasc.: ${animal['peso_nascimento']}kg\n";
-    }
-
-    // Navega para o ecrã da IA passando o texto compilado
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RelatorioIaScreen(dadosGado: dadosCompilados),
-      ),
-    );
-  }
+class AdminDashboardScreen extends StatelessWidget {
+  const AdminDashboardScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text("Painel Administrativo"),
-        backgroundColor: Colors.green[800],
+        title: const Text('Painel do Gestor'),
+        backgroundColor: Colors.blueGrey[900], // Cor mais sóbria para o Admin
         foregroundColor: Colors.white,
-        actions: [
-          // <-- ESTA É A PARTE IMPORTANTE
-          IconButton(
-            icon: Icon(Icons.auto_awesome),
-            tooltip: 'Análise Inteligente',
-            onPressed: _prepararDadosParaIA,
-          ),
-        ],
+        elevation: 0,
       ),
-      body: _animais.isEmpty
-          ? Center(
-              child: Text(
-                "Nenhum animal cadastrado ainda.",
-                style: TextStyle(fontSize: 18),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Fazenda São Bento',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
-            )
-          : ListView.builder(
-              itemCount: _animais.length,
-              itemBuilder: (context, index) {
-                final animal = _animais[index];
-                return Card(
-                  margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.green[100],
-                      child: Text(animal['sexo'].substring(0, 1).toUpperCase()),
-                    ),
-                    title: Text(
-                      "Brinco: ${animal['identificacao']}",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(
-                      "Raça: ${animal['raca']} | Peso: ${animal['peso_nascimento']}kg",
-                    ),
-                    trailing: Icon(Icons.arrow_forward_ios, size: 16),
-                  ),
-                );
-              },
             ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.green[800],
-        foregroundColor: Colors.white,
-        child: Icon(Icons.add),
-        onPressed: () async {
-          final recarregar = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => FormAnimalScreen()),
-          );
-          if (recarregar == true) {
-            _atualizarLista();
-          }
-        },
+            const Text(
+              'Escolha o módulo de gestão:',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2, // 2 cartões por linha
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                children: [
+                  _buildAdminCard(
+                    context,
+                    'Visão Geral (BI)',
+                    Icons.pie_chart,
+                    Colors.green,
+                    const DashboardScreen(),
+                  ),
+                  _buildAdminCard(
+                    context,
+                    'Histórico e Auditoria',
+                    Icons.history,
+                    Colors.blue,
+                    const HistoricoMovimentacoesScreen(),
+                  ),
+                  _buildAdminCard(
+                    context,
+                    'Gestão do Rebanho',
+                    Icons.pets,
+                    Colors.brown,
+                    const MenuManejoScreen(), // O admin também pode aceder à lista se quiser!
+                  ),
+                  // Se tiver o relatório da IA, pode descomentar abaixo:
+                  // _buildAdminCard(
+                  //   context,
+                  //   'Relatório de IA',
+                  //   Icons.psychology,
+                  //   Colors.deepPurple,
+                  //   const RelatorioIAScreen()
+                  // ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget construtor dos botões do Admin
+  Widget _buildAdminCard(
+    BuildContext context,
+    String titulo,
+    IconData icone,
+    MaterialColor cor,
+    Widget telaDestino,
+  ) {
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => telaDestino),
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: cor[100]!, width: 2),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: cor[50],
+              child: Icon(icone, size: 32, color: cor[700]),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              titulo,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

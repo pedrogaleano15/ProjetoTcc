@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:gado_control/shared/widgets/grafico_peso_widget.dart';
 import '../../core/services/gemini_service.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import '../../components/grafico_peso_widget.dart';
 
 class RelatorioIaScreen extends StatefulWidget {
   // Recebe os dados brutos do gado transformados em texto

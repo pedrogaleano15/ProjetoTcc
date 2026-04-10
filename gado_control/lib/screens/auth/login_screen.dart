@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:gado_control/screens/dashboard/dashboard_peao_screen.dart';
 import '../admin/admin_dashboard.dart';
-import '../peao/menu_manejo.dart';
 
 class LoginScreen extends StatelessWidget {
   @override
@@ -39,7 +39,9 @@ class LoginScreen extends StatelessWidget {
                   // Navegação real para o Dashboard
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => AdminDashboard()),
+                    MaterialPageRoute(
+                      builder: (context) => AdminDashboardScreen(),
+                    ),
                   );
                 },
                 icon: Icon(Icons.admin_panel_settings),
@@ -58,7 +60,7 @@ class LoginScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const MenuManejoScreen(),
+                      builder: (context) => const DashboardPeaoScreen(),
                     ), // <-- Agora ele vai para o Dashboard!
                   );
                 },

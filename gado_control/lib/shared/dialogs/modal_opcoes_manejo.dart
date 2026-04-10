@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'card_vacinacao_screen.dart';
-import 'historico_manejo_screen.dart';
-import '../forms/form_desmame.dart';
-import '../forms/form_inseminacao.dart';
-import '../forms/form_morte.dart';
-import '../forms/form_pesagem.dart';
-import '../forms/form_doenca.dart';
+import 'package:gado_control/screens/animal/form_desmame.dart';
+import 'package:gado_control/screens/animal/form_morte.dart';
+import 'package:gado_control/screens/relatorios/card_vacinacao_screen.dart';
+import 'package:gado_control/screens/saude_reproducao/form_doenca.dart';
+import 'package:gado_control/screens/saude_reproducao/form_inseminacao.dart';
+import 'package:gado_control/screens/saude_reproducao/form_pesagem.dart';
+import 'package:gado_control/screens/saude_reproducao/historico_manejo_screen.dart';
 
 // Agora é um Future! A tela de perfil vai esperar essa janelinha fechar para atualizar os dados
 Future<void> mostrarMenuManejo(
@@ -91,7 +91,7 @@ Future<void> mostrarMenuManejo(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          CartaoVacinacaoScreen(animalId: animal['id']),
+                          CartaoVacinacaoScreen(animal: animal),
                     ),
                   );
                 },

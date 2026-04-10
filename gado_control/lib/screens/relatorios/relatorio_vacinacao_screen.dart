@@ -19,7 +19,7 @@ class RelatorioVacinacaoScreen extends StatelessWidget {
 
     for (var animal in animais) {
       final vacinas = await DatabaseHelper.instance.listarVacinasPorAnimal(
-        animal['id'],
+        animal['identificacao'].toString(),
       );
       final vStr = vacinas
           .map(
