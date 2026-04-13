@@ -161,5 +161,5 @@ flutter run
 **Alexandre Raul**
 
 Engenharia da Computação · UCDB · Campo Grande/MS  
-TCC — 2025  
+TCC — 2026  
 [GitHub](https://github.com/pedrogaleano15) · [LinkedIn](https://linkedin.com/in/pedro-henrique-morais-galeano)
