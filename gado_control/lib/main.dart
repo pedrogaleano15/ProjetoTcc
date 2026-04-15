@@ -1,26 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'core/theme/app_theme.dart';
 import 'screens/auth/login_screen.dart';
 
 void main() async {
-  // Garante que o Flutter está pronto para ler arquivos antes de rodar o app
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Carrega o arquivo secreto com a sua chave
-  await dotenv.load(fileName: ".env");
+  // Barra de status transparente — visual mais moderno
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
 
-  // Inicia o app com a classe correta
-  runApp(GadoControlApp());
+  // Bloqueia orientação em retrato — app é mobile-first
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  await dotenv.load(fileName: '.env');
+
+  runApp(const GadoControlApp());
 }
 
 class GadoControlApp extends StatelessWidget {
+  const GadoControlApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'GadoControl',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.green, useMaterial3: true),
-      home: LoginScreen(), // O app começa no Login!
+      theme: AppTheme.light, // Único ponto de controle visual do app
+      home: const LoginScreen(),
     );
   }
 }
