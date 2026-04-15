@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 
 class FormDesmameScreen extends StatefulWidget {
   final Map<String, dynamic> animal;
@@ -18,7 +18,6 @@ class _FormDesmameScreenState extends State<FormDesmameScreen> {
 
   void _confirmarDesmame() async {
     if (!_formKey.currentState!.validate()) return;
-
     final brinco = widget.animal['identificacao'].toString();
 
     final dados = {
@@ -29,8 +28,8 @@ class _FormDesmameScreenState extends State<FormDesmameScreen> {
       'lote_destino': _loteController.text,
     };
 
-    await DatabaseHelper.instance.inserirDesmame(dados);
-    await DatabaseHelper.instance.atualizarLoteAnimal(
+    await GadoRepository.instance.inserirDesmame(dados);
+    await GadoRepository.instance.atualizarLoteAnimal(
       brinco,
       _loteController.text,
     );

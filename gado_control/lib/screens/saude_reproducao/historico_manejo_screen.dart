@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 
 class HistoricoManejoScreen extends StatefulWidget {
   final Map<String, dynamic> animal;
@@ -27,20 +27,18 @@ class _HistoricoManejoScreenState extends State<HistoricoManejoScreen> {
 
   Future<void> _carregarHistorico() async {
     setState(() => _isLoading = true);
-
     final String animalId = widget.animal['identificacao'].toString();
 
-    // Chamadas sincronizadas com o novo DBHelper (CORRIGE A IMAGEM 2)
-    final vacinas = await DatabaseHelper.instance.listarVacinasPorAnimal(
+    final vacinas = await GadoRepository.instance.listarVacinasPorAnimal(
       animalId,
     );
-    final desmames = await DatabaseHelper.instance.listarDesmame(animalId);
-    final inseminacoes = await DatabaseHelper.instance.listarReproducao(
+    final desmames = await GadoRepository.instance.listarDesmame(animalId);
+    final inseminacoes = await GadoRepository.instance.listarReproducao(
       animalId,
     );
-    final mortes = await DatabaseHelper.instance.listarBaixas(animalId);
-    final pesagens = await DatabaseHelper.instance.listarPesagens(animalId);
-    final saude = await DatabaseHelper.instance.listarHistoricoSaude(animalId);
+    final mortes = await GadoRepository.instance.listarBaixas(animalId);
+    final pesagens = await GadoRepository.instance.listarPesagens(animalId);
+    final saude = await GadoRepository.instance.listarHistoricoSaude(animalId);
 
     setState(() {
       _listaVacinas = vacinas;
@@ -106,9 +104,7 @@ class _HistoricoManejoScreenState extends State<HistoricoManejoScreen> {
             .map(
               (item) => Card(
                 child: ListTile(
-                  title: Text(
-                    item.values.elementAt(2).toString(),
-                  ), // Pega um valor genérico para exibição
+                  title: Text(item.values.elementAt(2).toString()),
                   subtitle: Text('Data: ${item.values.elementAt(1)}'),
                 ),
               ),

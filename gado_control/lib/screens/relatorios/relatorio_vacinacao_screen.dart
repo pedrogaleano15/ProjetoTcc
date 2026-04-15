@@ -3,22 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 
 class RelatorioVacinacaoScreen extends StatelessWidget {
-  final String
-  observacoesGerais; // Variável para receber o texto que você digitou
+  final String observacoesGerais;
 
   const RelatorioVacinacaoScreen({Key? key, this.observacoesGerais = ''})
     : super(key: key);
 
   Future<Uint8List> _gerarRelatorioPdf(PdfPageFormat format) async {
     final pdf = pw.Document();
-    final animais = await DatabaseHelper.instance.listarAnimais();
+    final animais = (await GadoRepository.instance.listarAnimais())
+        .map((a) => a.toMap())
+        .toList();
     List<List<String>> dadosTabela = [];
 
     for (var animal in animais) {
-      final vacinas = await DatabaseHelper.instance.listarVacinasPorAnimal(
+      final vacinas = await GadoRepository.instance.listarVacinasPorAnimal(
         animal['identificacao'].toString(),
       );
       final vStr = vacinas
@@ -89,14 +90,12 @@ class RelatorioVacinacaoScreen extends StatelessWidget {
               ],
             ),
             pw.SizedBox(height: 10),
-
-            // CAIXA DE OBSERVAÇÕES (Aparece se você digitou algo)
             if (observacoesGerais.isNotEmpty)
               pw.Container(
                 margin: const pw.EdgeInsets.only(bottom: 15),
                 padding: const pw.EdgeInsets.all(10),
                 decoration: pw.BoxDecoration(
-                  color: PdfColors.yellow50, // Fundo amarelinho de atenção
+                  color: PdfColors.yellow50,
                   border: pw.Border.all(color: PdfColors.orange),
                 ),
                 child: pw.Column(
@@ -117,8 +116,6 @@ class RelatorioVacinacaoScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
-            // TABELA
             pw.TableHelper.fromTextArray(
               headers: [
                 'Brinco',

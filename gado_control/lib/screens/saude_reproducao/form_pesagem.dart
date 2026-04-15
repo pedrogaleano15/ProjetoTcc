@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../core/services/calculos_service.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 
 class FormPesagemScreen extends StatefulWidget {
-  final Map<String, dynamic> animal; // Recebe o animal selecionado
+  final Map<String, dynamic> animal;
   const FormPesagemScreen({Key? key, required this.animal}) : super(key: key);
 
   @override
@@ -25,79 +25,64 @@ class _FormPesagemScreenState extends State<FormPesagemScreen> {
           key: _formKey,
           child: Column(
             children: [
-              _buildInfoAnimal(),
+              Card(
+                color: Colors.blueGrey[50],
+                child: ListTile(
+                  leading: const Icon(Icons.scale),
+                  title: const Text('Último Peso Registado'),
+                  trailing: Text(
+                    '${widget.animal['peso_atual'] ?? widget.animal['peso_nascimento']} kg',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
-              _buildCamposEntrada(),
+              TextFormField(
+                controller: _pesoController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Novo Peso (kg)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.add_chart),
+                ),
+                validator: (value) => value!.isEmpty ? 'Informe o peso' : null,
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                title: Text(
+                  "Data da Pesagem: ${_dataSelecionada.day}/${_dataSelecionada.month}/${_dataSelecionada.year}",
+                ),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () async {
+                  final pick = await showDatePicker(
+                    context: context,
+                    initialDate: _dataSelecionada,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (pick != null) setState(() => _dataSelecionada = pick);
+                },
+              ),
               const SizedBox(height: 30),
-              _buildBotaoSalvar(),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[800],
+                    padding: const EdgeInsets.all(16),
+                  ),
+                  onPressed: _salvarPesagem,
+                  child: const Text(
+                    'REGISTAR PESAGEM',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  // --- Widgets Extraídos ---
-
-  Widget _buildInfoAnimal() {
-    return Card(
-      color: Colors.blueGrey[50],
-      child: ListTile(
-        leading: const Icon(Icons.scale),
-        title: const Text('Último Peso Registado'),
-        trailing: Text(
-          '${widget.animal['peso_atual'] ?? widget.animal['peso_nascimento']} kg',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCamposEntrada() {
-    return Column(
-      children: [
-        TextFormField(
-          controller: _pesoController,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(
-            labelText: 'Novo Peso (kg)',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.add_chart),
-          ),
-          validator: (value) => value!.isEmpty ? 'Informe o peso' : null,
-        ),
-        const SizedBox(height: 16),
-        ListTile(
-          title: Text(
-            "Data da Pesagem: ${_dataSelecionada.day}/${_dataSelecionada.month}/${_dataSelecionada.year}",
-          ),
-          trailing: const Icon(Icons.calendar_today),
-          onTap: () async {
-            final pick = await showDatePicker(
-              context: context,
-              initialDate: _dataSelecionada,
-              firstDate: DateTime(2020),
-              lastDate: DateTime.now(),
-            );
-            if (pick != null) setState(() => _dataSelecionada = pick);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBotaoSalvar() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green[800],
-          padding: const EdgeInsets.all(16),
-        ),
-        onPressed: _salvarPesagem,
-        child: const Text(
-          'REGISTAR PESAGEM',
-          style: TextStyle(color: Colors.white, fontSize: 16),
         ),
       ),
     );
@@ -110,10 +95,6 @@ class _FormPesagemScreenState extends State<FormPesagemScreen> {
       final double pesoAnterior =
           (widget.animal['peso_atual'] ?? widget.animal['peso_nascimento'])
               .toDouble();
-
-      // 1. Calculamos o GMD (usando nosso serviço)
-      // Nota: Aqui precisaríamos da data da pesagem anterior.
-      // Por enquanto, vamos salvar o ganho bruto se não tivermos a data anterior.
       double gmdCalculado = CalculosService.calcularGMD(
         novoPeso,
         pesoAnterior,
@@ -130,25 +111,18 @@ class _FormPesagemScreenState extends State<FormPesagemScreen> {
         'peso_anterior': pesoAnterior,
         'peso_atual': novoPeso,
         'gmd': gmdCalculado,
-        'score_corporal':
-            3, // Valor padrão ou você pode adicionar um campo para isso
+        'score_corporal': 3,
       };
 
-      // 2. Salva no Banco de Dados
-      await DatabaseHelper.instance.inserirPesagem(novaPesagem);
-
+      await GadoRepository.instance.inserirPesagem(novaPesagem);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Pesagem registada e peso do animal atualizado!'),
+          content: Text('Pesagem registada!'),
           backgroundColor: Colors.green,
         ),
       );
-
-      Navigator.pop(
-        context,
-        true,
-      ); // O 'true' avisa a tela anterior que houve mudança
+      Navigator.pop(context, true);
     }
   }
 }

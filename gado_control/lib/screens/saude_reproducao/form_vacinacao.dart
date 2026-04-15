@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 
 class FormVacinacaoScreen extends StatefulWidget {
   final Map<String, dynamic> animal;
@@ -12,14 +12,12 @@ class FormVacinacaoScreen extends StatefulWidget {
 class _FormVacinacaoScreenState extends State<FormVacinacaoScreen> {
   final _formKey = GlobalKey<FormState>();
   final _vacinaController = TextEditingController();
-
   DateTime _dataAplicacao = DateTime.now();
   DateTime? _proximaDose;
   bool _temReforco = false;
 
   void _salvarVacina() async {
     if (!_formKey.currentState!.validate()) return;
-
     final dados = {
       'animal_id': widget.animal['identificacao'].toString(),
       'nome_vacina': _vacinaController.text,
@@ -28,9 +26,7 @@ class _FormVacinacaoScreenState extends State<FormVacinacaoScreen> {
           ? _proximaDose!.toIso8601String()
           : '',
     };
-
-    await DatabaseHelper.instance.inserirVacina(dados);
-
+    await GadoRepository.instance.inserirVacina(dados);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -38,7 +34,7 @@ class _FormVacinacaoScreenState extends State<FormVacinacaoScreen> {
         backgroundColor: Colors.teal,
       ),
     );
-    Navigator.pop(context, true); // Retorna true para atualizar o perfil
+    Navigator.pop(context, true);
   }
 
   @override
@@ -59,15 +55,13 @@ class _FormVacinacaoScreenState extends State<FormVacinacaoScreen> {
               TextFormField(
                 controller: _vacinaController,
                 decoration: const InputDecoration(
-                  labelText: 'Nome da Vacina (Ex: Aftosa, Raiva...)',
+                  labelText: 'Nome da Vacina',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.vaccines),
                 ),
-                validator: (v) => v == null || v.isEmpty ? 'Obrigatório' : null,
+                validator: (v) => v!.isEmpty ? 'Obrigatório' : null,
               ),
               const SizedBox(height: 16),
-
-              // DATA DE APLICAÇÃO
               ListTile(
                 shape: RoundedRectangleBorder(
                   side: BorderSide(color: Colors.grey[400]!),
@@ -90,8 +84,6 @@ class _FormVacinacaoScreenState extends State<FormVacinacaoScreen> {
                 },
               ),
               const SizedBox(height: 16),
-
-              // REFORÇO / PRÓXIMA DOSE
               CheckboxListTile(
                 title: const Text("Exige dose de reforço?"),
                 value: _temReforco,
@@ -99,15 +91,13 @@ class _FormVacinacaoScreenState extends State<FormVacinacaoScreen> {
                 onChanged: (bool? val) {
                   setState(() {
                     _temReforco = val!;
-                    if (_temReforco && _proximaDose == null) {
+                    if (_temReforco && _proximaDose == null)
                       _proximaDose = _dataAplicacao.add(
                         const Duration(days: 30),
-                      ); // Padrão 30 dias
-                    }
+                      );
                   });
                 },
               ),
-
               if (_temReforco)
                 ListTile(
                   shape: RoundedRectangleBorder(
@@ -132,7 +122,6 @@ class _FormVacinacaoScreenState extends State<FormVacinacaoScreen> {
                     if (pick != null) setState(() => _proximaDose = pick);
                   },
                 ),
-
               const SizedBox(height: 32),
               ElevatedButton.icon(
                 onPressed: _salvarVacina,

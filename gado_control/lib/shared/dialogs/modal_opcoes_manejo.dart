@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:gado_control/screens/animal/form_desmame.dart';
-import 'package:gado_control/screens/animal/form_morte.dart';
-import 'package:gado_control/screens/relatorios/card_vacinacao_screen.dart';
-import 'package:gado_control/screens/saude_reproducao/form_doenca.dart';
-import 'package:gado_control/screens/saude_reproducao/form_inseminacao.dart';
-import 'package:gado_control/screens/saude_reproducao/form_pesagem.dart';
-import 'package:gado_control/screens/saude_reproducao/historico_manejo_screen.dart';
+import '../../screens/animal/form_desmame.dart';
+import '../../screens/animal/form_morte.dart';
+import '../../screens/saude_reproducao/form_doenca.dart';
+import '../../screens/saude_reproducao/form_inseminacao.dart';
+import '../../screens/saude_reproducao/form_pesagem.dart';
+import '../../screens/saude_reproducao/historico_manejo_screen.dart';
+// CORREÇÃO: Vamos chamar diretamente o Formulário de Vacina!
+import '../../screens/saude_reproducao/form_vacinacao.dart';
 
-// Agora é um Future! A tela de perfil vai esperar essa janelinha fechar para atualizar os dados
 Future<void> mostrarMenuManejo(
   BuildContext context,
   Map<String, dynamic> animal,
 ) async {
   await showModalBottomSheet(
     context: context,
-    isScrollControlled: true, // Permite que a lista suba corretamente
+    isScrollControlled: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -30,9 +30,7 @@ Future<void> mostrarMenuManejo(
               Container(
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.only(
-                  bottom: 10,
-                ), // ERRO CORRIGIDO AQUI!
+                margin: const EdgeInsets.only(bottom: 10),
                 decoration: BoxDecoration(
                   color: Colors.grey[300],
                   borderRadius: BorderRadius.circular(2),
@@ -84,14 +82,13 @@ Future<void> mostrarMenuManejo(
                 context,
                 Icons.vaccines,
                 Colors.blue,
-                'Saúde e Vacinação',
+                'Registar Vacina', // CORRIGIDO PARA ABRIR O FORMULÁRIO
                 () {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          CartaoVacinacaoScreen(animal: animal),
+                      builder: (context) => FormVacinacaoScreen(animal: animal),
                     ),
                   );
                 },

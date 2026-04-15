@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
+import '../../core/services/zootecnia_service.dart';
 
 import 'form_desmame.dart';
 import 'form_morte.dart';
@@ -18,12 +19,10 @@ class PerfilAnimalScreen extends StatefulWidget {
 
 class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
   late Map<String, dynamic> _animalAtual;
-
   List<Map<String, dynamic>> _pesagens = [];
   List<Map<String, dynamic>> _historicoSaude = [];
   List<Map<String, dynamic>> _reproducao = [];
   List<Map<String, dynamic>> _vacinas = [];
-
   bool _jaDesmamou = false;
   bool _isLoading = true;
 
@@ -36,23 +35,22 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
 
   void _carregarDados() async {
     setState(() => _isLoading = true);
-
     final idBrinco = _animalAtual['identificacao'].toString();
 
-    final animalAtualizado = await DatabaseHelper.instance.obterAnimal(
+    final animalAtualizado = await GadoRepository.instance.obterAnimal(
       idBrinco,
     );
-    final pesagens = await DatabaseHelper.instance.listarPesagens(idBrinco);
-    final saude = await DatabaseHelper.instance.listarHistoricoSaude(idBrinco);
-    final repro = await DatabaseHelper.instance.listarReproducao(idBrinco);
-    final desmames = await DatabaseHelper.instance.listarDesmame(idBrinco);
-    final vacinas = await DatabaseHelper.instance.listarVacinasPorAnimal(
+    final pesagens = await GadoRepository.instance.listarPesagens(idBrinco);
+    final saude = await GadoRepository.instance.listarHistoricoSaude(idBrinco);
+    final repro = await GadoRepository.instance.listarReproducao(idBrinco);
+    final desmames = await GadoRepository.instance.listarDesmame(idBrinco);
+    final vacinas = await GadoRepository.instance.listarVacinasPorAnimal(
       idBrinco,
     );
 
     if (mounted) {
       setState(() {
-        if (animalAtualizado != null) _animalAtual = animalAtualizado;
+        if (animalAtualizado != null) _animalAtual = animalAtualizado.toMap();
         _pesagens = pesagens;
         _historicoSaude = saude;
         _reproducao = repro;
@@ -71,10 +69,6 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
       if (sucesso == true) _carregarDados();
     });
   }
-
-  // ==================================================
-  // JANELAS INTERATIVAS (MODAIS) PARA ATUALIZAR STATUS
-  // ==================================================
 
   void _atualizarStatusSaude(int id, String statusAtual) {
     String novoStatus = statusAtual;
@@ -99,13 +93,13 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await DatabaseHelper.instance.atualizarStatusSaude(
+              await GadoRepository.instance.atualizarStatusSaude(
                 id,
                 novoStatus,
               );
               if (!mounted) return;
               Navigator.pop(context);
-              _carregarDados(); // Recarrega a tela!
+              _carregarDados();
             },
             child: const Text('Salvar'),
           ),
@@ -151,15 +145,12 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // 1. Atualiza a ficha do animal
-              await DatabaseHelper.instance.atualizarLocalizacaoAnimal(
+              await GadoRepository.instance.atualizarLocalizacaoAnimal(
                 _animalAtual['identificacao'].toString(),
                 pastoCtrl.text,
                 loteCtrl.text,
               );
-
-              // 2. A MÁGICA: Regista a ação na caderneta de movimentações!
-              await DatabaseHelper.instance.inserirMovimentacao({
+              await GadoRepository.instance.inserirMovimentacao({
                 'data_movimentacao': DateTime.now().toIso8601String(),
                 'tipo_servico': 'Manejo Individual',
                 'pasto_origem': _animalAtual['pasto'] ?? '-',
@@ -168,13 +159,11 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
                 'novo_lote': loteCtrl.text,
                 'quantidade_animais': 1,
                 'responsavel': '-',
-                'observacoes':
-                    'Brinco: ${_animalAtual['identificacao']}', // Regista qual foi o boi
+                'observacoes': 'Brinco: ${_animalAtual['identificacao']}',
               });
-
               if (!mounted) return;
               Navigator.pop(context);
-              _carregarDados(); // Recarrega o perfil com os novos dados
+              _carregarDados();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Animal movido e registado no histórico!'),
@@ -212,13 +201,13 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              await DatabaseHelper.instance.atualizarStatusReproducao(
+              await GadoRepository.instance.atualizarStatusReproducao(
                 id,
                 novoStatus,
               );
               if (!mounted) return;
               Navigator.pop(context);
-              _carregarDados(); // Recarrega a tela!
+              _carregarDados();
             },
             child: const Text('Salvar'),
           ),
@@ -226,8 +215,6 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
       ),
     );
   }
-
-  // ==================================================
 
   @override
   Widget build(BuildContext context) {
@@ -253,18 +240,14 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
             Container(
               color: Colors.white,
               child: TabBar(
-                isScrollable:
-                    true, // Adicione isto para os textos não ficarem espremidos
+                isScrollable: true,
                 labelColor: corPrincipal,
                 unselectedLabelColor: Colors.grey,
                 indicatorColor: corPrincipal,
                 tabs: [
                   const Tab(icon: Icon(Icons.monitor_weight), text: "Pesagens"),
                   const Tab(icon: Icon(Icons.medical_services), text: "Saúde"),
-                  const Tab(
-                    icon: Icon(Icons.vaccines),
-                    text: "Vacinas",
-                  ), // <--- NOVA ABA
+                  const Tab(icon: Icon(Icons.vaccines), text: "Vacinas"),
                   if (!isMacho)
                     const Tab(icon: Icon(Icons.favorite), text: "Reprodução"),
                 ],
@@ -289,10 +272,31 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
   }
 
   Widget _buildCabecalho(Color cor, bool isMacho, bool isMorto) {
+    final zootecnia = ZootecniaService.instance.classificarAnimal(
+      _animalAtual['data_nascimento'],
+      _animalAtual['sexo'],
+    );
+    String categoria = zootecnia['categoria'];
+    String idadeTexto = zootecnia['idade_texto'];
+    int mesesDeVida = zootecnia['meses'] ?? 0;
+    bool jaPassouDaIdade = mesesDeVida > 12;
+    String dataNascLimpa =
+        _animalAtual['data_nascimento']?.toString().split(' ')[0] ??
+        '--/--/----';
+
+    // AQUI ESTÁ A CORREÇÃO DO PESO!
+    String pesoExibicao = '--';
+    if (_animalAtual['peso_atual'] != null && _animalAtual['peso_atual'] > 0) {
+      pesoExibicao = '${_animalAtual['peso_atual']} kg';
+    } else if (_animalAtual['peso_nascimento'] != null &&
+        _animalAtual['peso_nascimento'] > 0) {
+      pesoExibicao = '${_animalAtual['peso_nascimento']} kg (Nasc.)';
+    }
+
     return Container(
       width: double.infinity,
       color: cor.withOpacity(0.1),
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
       child: Column(
         children: [
           CircleAvatar(
@@ -306,17 +310,36 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _animalAtual['raca'] ?? 'Raça Desconhecida',
+            '${_animalAtual['raca'] ?? 'Raça Desconhecida'} • $categoria',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: cor,
             ),
           ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.cake, size: 16, color: Colors.grey[700]),
+              const SizedBox(width: 4),
+              Text(
+                '$dataNascLimpa ($idadeTexto)',
+                style: TextStyle(
+                  color: Colors.grey[800],
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+
+          // MOSTRANDO O PESO CORRIGIDO:
           Text(
-            'Lote: ${_animalAtual['lote'] ?? '-'} | Peso Nasc: ${_animalAtual['peso_nascimento']}kg',
+            'Lote: ${_animalAtual['lote'] ?? '-'} | Peso: $pesoExibicao',
             style: TextStyle(color: Colors.grey[700]),
           ),
+
           if (isMorto)
             const Padding(
               padding: EdgeInsets.only(top: 8.0),
@@ -329,15 +352,21 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
                 ),
               ),
             ),
-          if (_jaDesmamou && !isMorto)
-            const Padding(
-              padding: EdgeInsets.only(top: 8.0),
+          if ((_jaDesmamou || jaPassouDaIdade) && !isMorto)
+            Container(
+              margin: const EdgeInsets.only(top: 8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange[100],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange),
+              ),
               child: Text(
-                '✓ ANIMAL DESMAMADO',
-                style: TextStyle(
+                _jaDesmamou ? '✓ ANIMAL DESMAMADO' : '✓ ISENTO (FASE ADULTA)',
+                style: const TextStyle(
                   color: Colors.orange,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -347,6 +376,14 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
   }
 
   Widget _buildAcoesRapidas({required bool isFemea, required bool isMorto}) {
+    final mesesDeVida =
+        ZootecniaService.instance.classificarAnimal(
+          _animalAtual['data_nascimento'],
+          _animalAtual['sexo'],
+        )['meses'] ??
+        0;
+    final bloqueiaDesmame = isMorto || _jaDesmamou || (mesesDeVida > 12);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
       child: SingleChildScrollView(
@@ -354,8 +391,6 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
         child: Row(
           children: [
             const SizedBox(width: 16),
-
-            // ---> AQUI ESTÁ O NOVO BOTÃO DE MOVER! <---
             _buildBotaoAcao(
               Icons.drive_file_move,
               'Mover',
@@ -396,7 +431,7 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
               Icons.grass,
               'Desmame',
               Colors.orange,
-              isMorto || _jaDesmamou,
+              bloqueiaDesmame,
               () => _abrirForm(FormDesmameScreen(animal: _animalAtual)),
             ),
             _buildBotaoAcao(
@@ -461,7 +496,6 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
                 vac['proxima_dose'].toString().isNotEmpty
             ? vac['proxima_dose'].toString().split('T').first
             : 'Sem reforço agendado';
-
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
@@ -519,7 +553,6 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
         final saude = _historicoSaude[index];
         String data = saude['data_diagnostico'].toString().split('T').first;
         bool isCurado = saude['status'] == 'Curado';
-
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
@@ -533,13 +566,8 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Text('Data: $data\nStatus: ${saude['status']}'),
-            trailing: const Icon(
-              Icons.edit,
-              color: Colors.grey,
-              size: 20,
-            ), // Ícone visual para indicar que é clicável
+            trailing: const Icon(Icons.edit, color: Colors.grey, size: 20),
             isThreeLine: true,
-            // A MAGIA DO CLIQUE!
             onTap: () => _atualizarStatusSaude(saude['id'], saude['status']),
           ),
         );
@@ -556,13 +584,10 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
         final repro = _reproducao[index];
         String data = repro['data_inseminacao'].toString().split('T').first;
         String parto = repro['previsao_parto'].toString().split('T').first;
-
-        // Cores baseadas no status
         Color corIcone = Colors.pink;
         if (repro['status'] == 'Prenhe') corIcone = Colors.green;
         if (repro['status'] == 'Vazia') corIcone = Colors.red;
         if (repro['status'] == 'Aborto') corIcone = Colors.grey;
-
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
@@ -576,13 +601,8 @@ class _PerfilAnimalScreenState extends State<PerfilAnimalScreen> {
             subtitle: Text(
               'Inseminação: $data\nPrevisão de Parto: $parto\nStatus: ${repro['status']}',
             ),
-            trailing: const Icon(
-              Icons.edit,
-              color: Colors.grey,
-              size: 20,
-            ), // Ícone indicativo
+            trailing: const Icon(Icons.edit, color: Colors.grey, size: 20),
             isThreeLine: true,
-            // A MAGIA DO CLIQUE!
             onTap: () =>
                 _atualizarStatusReproducao(repro['id'], repro['status']),
           ),

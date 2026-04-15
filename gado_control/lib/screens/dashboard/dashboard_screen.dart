@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../core/services/zootecnia_service.dart';
+// O dashboard agora acessa TUDO via ZootecniaService — respeitando a arquitetura em camadas
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
-
+  const DashboardScreen({super.key});
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
-
   Map<String, int> _resumoSexo = {'Machos': 0, 'Fêmeas': 0, 'Total': 0};
   List<Map<String, dynamic>> _lotacaoPasto = [];
   Map<String, int> _statsRepro = {
@@ -27,9 +26,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _carregarMetricas() async {
-    final sexo = await DatabaseHelper.instance.obterResumoPorSexo();
-    final pasto = await DatabaseHelper.instance.obterLotacaoPorPasto();
-    final repro = await DatabaseHelper.instance.obterEstatisticaReproducao();
+    final sexo = await ZootecniaService.instance.obterResumoPorSexo();
+    final pasto = await ZootecniaService.instance.obterLotacaoPorPasto();
+    final repro = await ZootecniaService.instance.obterEstatisticaReproducao();
 
     if (mounted) {
       setState(() {
@@ -72,12 +71,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- 1. CARD: REBANHO TOTAL ---
   Widget _buildCardRebanhoTotal() {
     int total = _resumoSexo['Total'] ?? 0;
     int machos = _resumoSexo['Machos'] ?? 0;
     int femeas = _resumoSexo['Fêmeas'] ?? 0;
-
     double percMachos = total > 0 ? machos / total : 0.0;
     double percFemeas = total > 0 ? femeas / total : 0.0;
 
@@ -113,8 +110,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
-
-            // Barra de Progresso Dupla Falsificada com Row
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Row(
@@ -144,14 +139,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- 2. CARD: EFICIÊNCIA REPRODUTIVA ---
   Widget _buildCardEficienciaReprodutiva() {
     int prenhes = _statsRepro['Prenhe'] ?? 0;
     int vazias = _statsRepro['Vazia'] ?? 0;
     int aguardando = _statsRepro['Aguardando Diagnóstico'] ?? 0;
-    int totalDiagnosticado = prenhes + vazias; // Apenas as que já têm resultado
-
-    // Taxa de Prenhez (Prenhes / (Prenhes + Vazias))
+    int totalDiagnosticado = prenhes + vazias;
     double taxaPrenhez = totalDiagnosticado > 0
         ? (prenhes / totalDiagnosticado)
         : 0.0;
@@ -175,7 +167,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const Divider(),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -232,7 +223,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- 3. CARD: LOTAÇÃO DE PASTO ---
   Widget _buildCardLotacaoPasto() {
     return Card(
       elevation: 3,
@@ -253,7 +243,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
             const Divider(),
-
             if (_lotacaoPasto.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(16),
@@ -261,14 +250,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               )
             else
               ListView.builder(
-                shrinkWrap: true, // Necessário dentro de uma ScrollView
+                shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _lotacaoPasto.length,
                 itemBuilder: (context, index) {
                   final pasto = _lotacaoPasto[index];
-                  int maxAnimais =
-                      _lotacaoPasto[0]['quantidade']
-                          as int; // O primeiro tem sempre o maior número por causa do ORDER BY
+                  int maxAnimais = _lotacaoPasto[0]['quantidade'] as int;
                   int qtdAtual = pasto['quantidade'] as int;
 
                   return Padding(
@@ -293,9 +280,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 4),
                         LinearProgressIndicator(
-                          value: maxAnimais > 0
-                              ? qtdAtual / maxAnimais
-                              : 0, // Calcula o preenchimento relativo ao maior pasto
+                          value: maxAnimais > 0 ? qtdAtual / maxAnimais : 0,
                           backgroundColor: Colors.green[50],
                           color: Colors.green[400],
                           minHeight: 8,
@@ -312,7 +297,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
   Widget _buildLegenda(Color cor, String titulo, int valor) {
     return Row(
       children: [

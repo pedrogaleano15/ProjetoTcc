@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 
 class FormMovimentacaoScreen extends StatefulWidget {
   const FormMovimentacaoScreen({Key? key}) : super(key: key);
@@ -10,10 +10,8 @@ class FormMovimentacaoScreen extends StatefulWidget {
 
 class _FormMovimentacaoScreenState extends State<FormMovimentacaoScreen> {
   final _formKey = GlobalKey<FormState>();
-
   DateTime _data = DateTime.now();
   String _tipoServico = 'Transferência';
-
   final _pastoOrigemCtrl = TextEditingController();
   final _pastoDestinoCtrl = TextEditingController();
   final _loteOrigemCtrl = TextEditingController();
@@ -33,28 +31,23 @@ class _FormMovimentacaoScreenState extends State<FormMovimentacaoScreen> {
       'lote_original': _loteOrigemCtrl.text,
       'novo_lote': _loteDestinoCtrl.text.isNotEmpty
           ? _loteDestinoCtrl.text
-          : _loteOrigemCtrl.text, // Se deixar vazio, mantém o mesmo lote
+          : _loteOrigemCtrl.text,
       'quantidade_animais': int.tryParse(_quantidadeCtrl.text) ?? 0,
       'responsavel': _responsavelCtrl.text,
       'observacoes': _obsCtrl.text,
     };
 
-    // 1. Salva o registro no histórico de movimentações (O Caderno Digital)
-    await DatabaseHelper.instance.inserirMovimentacao(dados);
+    await GadoRepository.instance.inserirMovimentacao(dados);
 
-    // 2. A MÁGICA: Atualiza as fichas dos bois se for Transferência!
     if (_tipoServico == 'Transferência') {
       String novoLoteFinal = _loteDestinoCtrl.text.isNotEmpty
           ? _loteDestinoCtrl.text
           : _loteOrigemCtrl.text;
-
-      int boisAtualizados = await DatabaseHelper.instance.transferirLoteEmMassa(
+      await GadoRepository.instance.transferirLoteEmMassa(
         _loteOrigemCtrl.text,
         novoLoteFinal,
         _pastoDestinoCtrl.text,
       );
-
-      print("Sucesso! $boisAtualizados bois foram transferidos de lote/pasto.");
     }
 
     if (!mounted) return;
@@ -82,7 +75,6 @@ class _FormMovimentacaoScreenState extends State<FormMovimentacaoScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // --- CARD 1: SERVIÇO ---
               Card(
                 elevation: 2,
                 child: Padding(
@@ -134,8 +126,6 @@ class _FormMovimentacaoScreenState extends State<FormMovimentacaoScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // --- CARD 2: ORIGEM E DESTINO ---
               Card(
                 elevation: 2,
                 child: Padding(
@@ -209,8 +199,6 @@ class _FormMovimentacaoScreenState extends State<FormMovimentacaoScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-
-              // --- CARD 3: DETALHES ---
               Card(
                 elevation: 2,
                 child: Padding(
@@ -260,7 +248,6 @@ class _FormMovimentacaoScreenState extends State<FormMovimentacaoScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
               ElevatedButton.icon(
                 onPressed: _salvarMovimentacao,
                 icon: const Icon(Icons.save, color: Colors.white),

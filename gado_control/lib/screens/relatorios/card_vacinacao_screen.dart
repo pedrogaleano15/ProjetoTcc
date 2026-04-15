@@ -1,138 +1,336 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../core/services/zootecnia_service.dart';
+import '../../core/database/database_core.dart'; // Correção para acessar a conexão bruta
 
-// Se você tiver um modelo de Vacina, mantenha o import.
-// Se não, podemos usar Map como fizemos nos outros.
-class Vacina {
-  final String nome;
-  final String data;
-  final String proximaDose;
-
-  Vacina({required this.nome, required this.data, required this.proximaDose});
-
-  factory Vacina.fromMap(Map<String, dynamic> map) {
-    return Vacina(
-      nome: map['nome_vacina'] ?? 'Vacina s/ nome',
-      data: map['data_aplicacao'] ?? '--/--/--',
-      proximaDose: map['proxima_dose'] ?? 'Não agendada',
-    );
-  }
-}
-
-class CartaoVacinacaoScreen extends StatefulWidget {
-  // CORREÇÃO: Passamos o animal inteiro para ter acesso ao ID e ao Nome/Brinco
-  final Map<String, dynamic> animal;
-
-  const CartaoVacinacaoScreen({Key? key, required this.animal})
-    : super(key: key);
-
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({Key? key}) : super(key: key);
   @override
-  _CartaoVacinacaoScreenState createState() => _CartaoVacinacaoScreenState();
+  _DashboardScreenState createState() => _DashboardScreenState();
 }
 
-class _CartaoVacinacaoScreenState extends State<CartaoVacinacaoScreen> {
-  List<Vacina> vacinas = [];
-  bool isLoading = true;
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool _isLoading = true;
+  Map<String, int> _resumoSexo = {'Machos': 0, 'Fêmeas': 0, 'Total': 0};
+  List<Map<String, dynamic>> _lotacaoPasto = [];
+  Map<String, int> _statsRepro = {
+    'Prenhe': 0,
+    'Vazia': 0,
+    'Aguardando Diagnóstico': 0,
+    'Aborto': 0,
+  };
 
   @override
   void initState() {
     super.initState();
-    _carregarVacinas();
+    _carregarMetricas();
   }
 
-  Future<void> _carregarVacinas() async {
-    setState(() => isLoading = true);
+  Future<void> _carregarMetricas() async {
+    final sexo = await ZootecniaService.instance.obterResumoPorSexo();
 
-    // CORREÇÃO: Pegamos o identificacao (Brinco) do widget.animal
-    final String brinco = widget.animal['identificacao'].toString();
+    // Acessa o banco diretamente usando o core para queries que ainda não migraram
+    final db = await DatabaseCore.instance.database;
+    final pasto = await db.rawQuery(
+      "SELECT COALESCE(pasto, 'Sem Pasto') as pasto_nome, COUNT(*) as quantidade FROM animais WHERE status = 'Ativo' GROUP BY pasto ORDER BY quantidade DESC",
+    );
 
-    final dados = await DatabaseHelper.instance.listarVacinasPorAnimal(brinco);
-
-    setState(() {
-      vacinas = dados.map((item) => Vacina.fromMap(item)).toList();
-      isLoading = false;
-    });
+    final repro = await ZootecniaService.instance.obterEstatisticaReproducao();
+    if (mounted) {
+      setState(() {
+        _resumoSexo = sexo;
+        _lotacaoPasto = pasto;
+        _statsRepro = repro;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('Cartão de Vacinas: ${widget.animal['identificacao']}'),
-        backgroundColor: Colors.blue[800],
+        title: const Text('Visão Geral da Fazenda'),
+        backgroundColor: Colors.green[900],
         foregroundColor: Colors.white,
       ),
-      body: isLoading
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : vacinas.isEmpty
-          ? _buildSemVacinas()
-          : _buildListaVacinas(),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blue[800],
-        child: const Icon(Icons.add, color: Colors.white),
-        onPressed: () {
-          // Aqui você abriria o formulário de aplicação de vacina
-          // _abrirFormVacina();
-        },
-      ),
-    );
-  }
-
-  Widget _buildSemVacinas() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.vaccines_outlined, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          const Text(
-            'Nenhuma vacina registada para este animal.',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildListaVacinas() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: vacinas.length,
-      itemBuilder: (context, index) {
-        final vacina = vacinas[index];
-        return Card(
-          elevation: 2,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Colors.blue,
-              child: Icon(Icons.check, color: Colors.white),
-            ),
-            title: Text(
-              vacina.nome,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text('Aplicada em: ${vacina.data}'),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                const Text(
-                  'Próxima Dose:',
-                  style: TextStyle(fontSize: 10, color: Colors.grey),
+          : RefreshIndicator(
+              onRefresh: _carregarMetricas,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildCardRebanhoTotal(),
+                    const SizedBox(height: 16),
+                    _buildCardEficienciaReprodutiva(),
+                    const SizedBox(height: 16),
+                    _buildCardLotacaoPasto(),
+                  ],
                 ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildCardRebanhoTotal() {
+    int total = _resumoSexo['Total'] ?? 0;
+    int machos = _resumoSexo['Machos'] ?? 0;
+    int femeas = _resumoSexo['Fêmeas'] ?? 0;
+    double percMachos = total > 0 ? machos / total : 0.0;
+    double percFemeas = total > 0 ? femeas / total : 0.0;
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.pets, color: Colors.brown),
+                SizedBox(width: 8),
                 Text(
-                  vacina.proximaDose,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
+                  'COMPOSIÇÃO DO REBANHO',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
+            const Divider(),
+            const SizedBox(height: 8),
+            Text(
+              total.toString(),
+              style: const TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Colors.green,
+              ),
+            ),
+            const Text(
+              'Animais Ativos',
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: (percMachos * 100).toInt(),
+                    child: Container(height: 12, color: Colors.blue),
+                  ),
+                  Expanded(
+                    flex: (percFemeas * 100).toInt(),
+                    child: Container(height: 12, color: Colors.pink),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildLegenda(Colors.blue, 'Machos', machos),
+                _buildLegenda(Colors.pink, 'Fêmeas (Matrizes)', femeas),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardEficienciaReprodutiva() {
+    int prenhes = _statsRepro['Prenhe'] ?? 0;
+    int vazias = _statsRepro['Vazia'] ?? 0;
+    int aguardando = _statsRepro['Aguardando Diagnóstico'] ?? 0;
+    int totalDiagnosticado = prenhes + vazias;
+    double taxaPrenhez = totalDiagnosticado > 0
+        ? (prenhes / totalDiagnosticado)
+        : 0.0;
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.favorite, color: Colors.pink),
+                SizedBox(width: 8),
+                Text(
+                  'EFICIÊNCIA REPRODUTIVA',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Taxa de Prenhez',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    Text(
+                      '${(taxaPrenhez * 100).toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: CircularProgressIndicator(
+                        value: taxaPrenhez,
+                        backgroundColor: Colors.red[100],
+                        color: Colors.green,
+                        strokeWidth: 8,
+                      ),
+                    ),
+                    const Icon(Icons.child_friendly, color: Colors.green),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildDadoVertical('Prenhes', prenhes.toString(), Colors.green),
+                _buildDadoVertical('Vazias', vazias.toString(), Colors.red),
+                _buildDadoVertical(
+                  'Aguardando',
+                  aguardando.toString(),
+                  Colors.orange,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardLotacaoPasto() {
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.grass, color: Colors.green),
+                SizedBox(width: 8),
+                Text(
+                  'MAPA DE LOTAÇÃO (PASTOS)',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const Divider(),
+            if (_lotacaoPasto.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: Text("Nenhum pasto com animais ativos.")),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _lotacaoPasto.length,
+                itemBuilder: (context, index) {
+                  final pasto = _lotacaoPasto[index];
+                  int maxAnimais = _lotacaoPasto[0]['quantidade'] as int;
+                  int qtdAtual = pasto['quantidade'] as int;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              pasto['pasto_nome'],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '$qtdAtual cabeças',
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        LinearProgressIndicator(
+                          value: maxAnimais > 0 ? qtdAtual / maxAnimais : 0,
+                          backgroundColor: Colors.green[50],
+                          color: Colors.green[400],
+                          minHeight: 8,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegenda(Color cor, String titulo, int valor) {
+    return Row(
+      children: [
+        CircleAvatar(radius: 6, backgroundColor: cor),
+        const SizedBox(width: 4),
+        Text(
+          '$titulo: ',
+          style: TextStyle(color: Colors.grey[700], fontSize: 12),
+        ),
+        Text(
+          valor.toString(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDadoVertical(String titulo, String valor, Color cor) {
+    return Column(
+      children: [
+        Text(
+          valor,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: cor,
           ),
-        );
-      },
+        ),
+        Text(titulo, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+      ],
     );
   }
 }

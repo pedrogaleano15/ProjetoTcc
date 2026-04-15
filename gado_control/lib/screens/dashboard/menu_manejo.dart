@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import 'package:gado_control/core/services/zootecnia_service.dart';
+import '../../repositories/gado_repository.dart';
 import '../animal/perfil_animal_screen.dart';
 import '../../shared/widgets/card_animal_list_title.dart';
-import '../../shared/widgets/barra_pesquisa_inteligente.dart';
-import '../../shared/widgets/menu_lateral_manejo.dart';
 
 class MenuManejoScreen extends StatefulWidget {
   final String modoLista;
-
   const MenuManejoScreen({Key? key, this.modoLista = 'Completo'})
     : super(key: key);
-
   @override
   _MenuManejoScreenState createState() => _MenuManejoScreenState();
 }
@@ -19,11 +16,7 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
   List<Map<String, dynamic>> _todosAnimais = [];
   List<Map<String, dynamic>> _animaisFiltrados = [];
   bool _isLoading = true;
-
   final TextEditingController _pesquisaController = TextEditingController();
-  String _tipoPesquisa = 'Brinco';
-
-  // === VARIÁVEIS DO FILTRO DE LOTE ===
   List<String> _lotesDisponiveis = ['Todos os Lotes'];
   String _loteSelecionado = 'Todos os Lotes';
 
@@ -37,25 +30,26 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
     List<Map<String, dynamic>> data = [];
 
     if (widget.modoLista == 'Inseminacao') {
-      final analise = await DatabaseHelper.instance
+      final analise = await ZootecniaService.instance
           .processarRegrasReprodutivas();
       data = analise['aptas'] ?? [];
     } else if (widget.modoLista == 'Descarte') {
-      final analise = await DatabaseHelper.instance
+      final analise = await ZootecniaService.instance
           .processarRegrasReprodutivas();
       data = analise['descarte'] ?? [];
     } else if (widget.modoLista == 'Desmame') {
-      data = await DatabaseHelper.instance.listarBezerrosParaDesmame();
+      data = await ZootecniaService.instance.listarBezerrosParaDesmame();
     } else {
-      data = await DatabaseHelper.instance.listarAnimais();
+      // Recebemos a lista de Objects Animal e convertemos para Maps para a UI
+      data = (await GadoRepository.instance.listarAnimais())
+          .map((a) => a.toMap())
+          .toList();
     }
 
     setState(() {
       _todosAnimais = data;
       _animaisFiltrados = data;
       _isLoading = false;
-
-      // === EXTRAIR OS LOTES EXISTENTES PARA O FILTRO ===
       Set<String> lotesUnicos = {'Todos os Lotes'};
       for (var a in data) {
         if (a['lote'] != null && a['lote'].toString().trim().isNotEmpty) {
@@ -67,7 +61,6 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
     });
   }
 
-  // === FUNÇÃO DO FILTRO POR LOTE ===
   void _filtrarPorLote(String? lote) {
     setState(() {
       _loteSelecionado = lote!;
@@ -78,36 +71,27 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
             .where((a) => a['lote'].toString().trim() == _loteSelecionado)
             .toList();
       }
-      // Se houver texto na barra de pesquisa, aplica por cima do filtro de lote
-      if (_pesquisaController.text.isNotEmpty) {
+      if (_pesquisaController.text.isNotEmpty)
         _filtrarLista(_pesquisaController.text);
-      }
     });
   }
 
-  // === PESQUISA DE TEXTO ===
   void _filtrarLista(String termo) {
     if (termo.isEmpty) {
-      // Se apagar o texto, volta a mostrar a lista filtrada apenas pelo Lote
       _filtrarPorLote(_loteSelecionado);
       return;
     }
-
     setState(() {
-      // Pega a lista base (completa ou já filtrada pelo Lote)
       List<Map<String, dynamic>> baseLista =
           _loteSelecionado == 'Todos os Lotes'
           ? _todosAnimais
           : _todosAnimais
                 .where((a) => a['lote'].toString().trim() == _loteSelecionado)
                 .toList();
-
       _animaisFiltrados = baseLista.where((animal) {
-        final termoBusca = termo.toLowerCase();
-        final valorAlvo = _tipoPesquisa == 'Brinco'
-            ? animal['identificacao'].toString().toLowerCase()
-            : (animal['lote'] ?? '').toString().toLowerCase();
-        return valorAlvo.contains(termoBusca);
+        return animal['identificacao'].toString().toLowerCase().contains(
+          termo.toLowerCase(),
+        );
       }).toList();
     });
   }
@@ -133,59 +117,14 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
         title: Text(tituloAppBar),
         backgroundColor: corAppBar,
         foregroundColor: Colors.white,
-
-        leading: widget.modoLista == 'Completo'
-            ? Builder(
-                builder: (context) => IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
-              )
-            : IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.pop(context),
-              ),
-
-        actions: widget.modoLista == 'Completo'
-            ? [
-                PopupMenuButton<String>(
-                  onSelected: (valor) {
-                    if (valor == 'vacinas') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Resumo de Vacinas em construção...'),
-                        ),
-                      );
-                    } else if (valor == 'cronograma') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Cronograma em construção...'),
-                        ),
-                      );
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'vacinas',
-                      child: Text('Resumo de Vacinas'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'cronograma',
-                      child: Text('Cronograma'),
-                    ),
-                  ],
-                ),
-              ]
-            : null,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        // Actions e Drawer foram REMOVIDOS para a tela ficar limpa!
       ),
-
-      drawer: widget.modoLista == 'Completo' ? const MenuLateralManejo() : null,
-
       body: Column(
         children: [
-          // ==================================================
-          // NOVO MENU SUSPENSO (DROPDOWN) DE FILTRO POR LOTE
-          // ==================================================
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             color: corAppBar.withOpacity(0.1),
@@ -220,24 +159,42 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
               ],
             ),
           ),
-
-          // ==================================================
-          // BARRA DE PESQUISA TRADICIONAL
-          // ==================================================
-          BarraPesquisaInteligente(
-            controller: _pesquisaController,
-            tipoPesquisa: _tipoPesquisa,
-            onSearch: _filtrarLista,
-            onClear: () {
-              _pesquisaController.clear();
-              _filtrarLista('');
-            },
-            onTipoChanged: (novoTipo) => setState(() {
-              _tipoPesquisa = novoTipo!;
-              _filtrarLista(_pesquisaController.text);
-            }),
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              controller: _pesquisaController,
+              decoration: InputDecoration(
+                labelText: 'Procurar por Brinco',
+                hintText: 'Digite o número do animal...',
+                prefixIcon: Icon(Icons.search, color: corAppBar),
+                suffixIcon: _pesquisaController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.grey),
+                        onPressed: () {
+                          _pesquisaController.clear();
+                          _filtrarLista('');
+                          FocusScope.of(context).unfocus();
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: corAppBar, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              onChanged: _filtrarLista,
+            ),
           ),
-
           Expanded(child: _buildCorpoDaLista()),
         ],
       ),
@@ -258,6 +215,7 @@ class _MenuManejoScreenState extends State<MenuManejoScreen> {
           final animal = _animaisFiltrados[index];
           return CardAnimalListTile(
             animal: animal,
+            modoLista: widget.modoLista,
             onTap: () {
               Navigator.push(
                 context,

@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:gado_control/screens/animal/perfil_animal_screen.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
+import '../animal/perfil_animal_screen.dart';
 
 class PeaoScannerScreen extends StatefulWidget {
+  const PeaoScannerScreen({Key? key}) : super(key: key);
+
   @override
   _PeaoScannerScreenState createState() => _PeaoScannerScreenState();
 }
 
 class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
-  // Controlador para podermos pausar e voltar a câmera
-  MobileScannerController _cameraController = MobileScannerController();
-  bool _processando =
-      false; // Evita que ele leia o mesmo QR Code repetidas vezes
+  final MobileScannerController _cameraController = MobileScannerController();
+  bool _processando = false;
 
   @override
   void dispose() {
@@ -20,23 +20,17 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
     super.dispose();
   }
 
-  // Função central: Pega o texto do QR Code e vai no SQLite
   void _buscarAnimalNoBanco(String idBrinco) async {
     if (_processando) return;
     setState(() => _processando = true);
 
-    _cameraController.stop(); // Pausa a câmera imediatamente
+    _cameraController.stop();
 
-    final db = await DatabaseHelper.instance.database;
-    // Faz a busca (SELECT) onde a identificação for igual ao lido no QR Code
-    final resultado = await db.query(
-      'animais',
-      where: 'identificacao = ?',
-      whereArgs: [idBrinco],
-    );
+    // A MÁGICA DA NOVA ARQUITETURA AQUI:
+    final animal = await GadoRepository.instance.obterAnimal(idBrinco);
 
-    if (resultado.isNotEmpty) {
-      _mostrarPopUpSucesso(resultado.first);
+    if (animal != null) {
+      _mostrarPopUpSucesso(animal.toMap());
     } else {
       _mostrarPopUpErro(idBrinco);
     }
@@ -45,7 +39,7 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
   void _mostrarPopUpSucesso(Map<String, dynamic> animal) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Evita que o utilizador feche ao clicar fora
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -80,13 +74,9 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
             ],
           ),
           actions: [
-            // BOTÃO 1: CANCELAR (Volta para a câmara)
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // Fecha o pop-up
-
-                // Nota: Descomente a linha abaixo se usar _cameraController
-                // _cameraController.start();
+                Navigator.pop(context);
                 setState(() => _processando = false);
               },
               child: const Text(
@@ -94,8 +84,6 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
                 style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             ),
-
-            // BOTÃO 2: ABRIR FICHA E MANEJO (A Solução!)
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green[800],
@@ -110,20 +98,13 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
                 style: TextStyle(fontSize: 16),
               ),
               onPressed: () {
-                // 1. Fecha o pop-up primeiro para não dar erro de contexto!
                 Navigator.pop(context);
-
-                // 2. Navega para o Perfil do Boi (onde está a gaveta de manejo)
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => PerfilAnimalScreen(animal: animal),
                   ),
                 ).then((_) {
-                  // 3. Quando o utilizador clicar na seta de voltar no perfil, a câmara acorda
-
-                  // Nota: Descomente a linha abaixo se usar _cameraController
-                  // _cameraController.start();
                   setState(() => _processando = false);
                 });
               },
@@ -139,7 +120,10 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: Text("❌ Não Encontrado", style: TextStyle(color: Colors.red)),
+        title: const Text(
+          "❌ Não Encontrado",
+          style: TextStyle(color: Colors.red),
+        ),
         content: Text(
           "O brinco '$idBrinco' não está cadastrado no banco de dados do sistema.",
         ),
@@ -150,11 +134,11 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
               _cameraController.start();
               setState(() => _processando = false);
             },
-            child: Text("Tentar Novamente"),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
+            child: const Text("Tentar Novamente"),
           ),
         ],
       ),
@@ -165,7 +149,7 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Leitura de Brinco (Peão)"),
+        title: const Text("Leitura de Brinco (Peão)"),
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
       ),
@@ -178,12 +162,11 @@ class _PeaoScannerScreenState extends State<PeaoScannerScreen> {
               for (final barcode in barcodes) {
                 if (barcode.rawValue != null) {
                   _buscarAnimalNoBanco(barcode.rawValue!);
-                  break; // Pega só o primeiro código que aparecer na tela e para
+                  break;
                 }
               }
             },
           ),
-          // Desenha uma "Mira" na tela
           Center(
             child: Container(
               width: 250,

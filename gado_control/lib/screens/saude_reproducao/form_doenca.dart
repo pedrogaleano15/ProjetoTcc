@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 
 class FormDoencaScreen extends StatefulWidget {
   final Map<String, dynamic> animal;
@@ -14,14 +14,11 @@ class _FormDoencaScreenState extends State<FormDoencaScreen> {
   final _diagnosticoController = TextEditingController();
   final _sintomasController = TextEditingController();
   final _tratamentoController = TextEditingController();
-
   DateTime _dataDiagnostico = DateTime.now();
   String _status = 'Em Tratamento';
 
   void _salvarSaude() async {
     if (!_formKey.currentState!.validate()) return;
-
-    // Chaves EXATAMENTE iguais à tabela historico_saude no banco
     final dados = {
       'animal_id': widget.animal['identificacao'].toString(),
       'data_diagnostico': _dataDiagnostico.toIso8601String(),
@@ -31,8 +28,7 @@ class _FormDoencaScreenState extends State<FormDoencaScreen> {
       'status': _status,
     };
 
-    await DatabaseHelper.instance.inserirSaude(dados);
-
+    await GadoRepository.instance.inserirSaude(dados);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -40,11 +36,7 @@ class _FormDoencaScreenState extends State<FormDoencaScreen> {
         backgroundColor: Colors.red,
       ),
     );
-
-    Navigator.pop(
-      context,
-      true,
-    ); // Retorna 'true' para obrigar o perfil a recarregar
+    Navigator.pop(context, true);
   }
 
   @override

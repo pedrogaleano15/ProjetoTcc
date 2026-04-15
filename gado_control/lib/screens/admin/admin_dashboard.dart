@@ -4,7 +4,7 @@ import '../relatorios/historico_movimentacoes_screen.dart'; // O Livro de Regist
 import '../dashboard/menu_manejo.dart'; // A Tela de Rebanho Completo
 
 class AdminDashboardScreen extends StatelessWidget {
-  const AdminDashboardScreen({Key? key}) : super(key: key);
+  const AdminDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

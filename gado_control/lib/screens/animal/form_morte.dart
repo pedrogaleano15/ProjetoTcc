@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 
 class FormMorteScreen extends StatefulWidget {
   final Map<String, dynamic> animal;
@@ -12,13 +12,11 @@ class FormMorteScreen extends StatefulWidget {
 class _FormMorteScreenState extends State<FormMorteScreen> {
   final _formKey = GlobalKey<FormState>();
   final _obsController = TextEditingController();
-
   DateTime _dataBaixa = DateTime.now();
   String _causaSelecionada = 'Causa Natural / Idade';
 
   void _registrarMorte() async {
     if (!_formKey.currentState!.validate()) return;
-
     final brinco = widget.animal['identificacao'].toString();
 
     final dados = {
@@ -28,8 +26,8 @@ class _FormMorteScreenState extends State<FormMorteScreen> {
       'observacoes': _obsController.text,
     };
 
-    await DatabaseHelper.instance.inserirBaixa(dados);
-    await DatabaseHelper.instance.atualizarStatusAnimal(brinco, 'Morto');
+    await GadoRepository.instance.inserirBaixa(dados);
+    await GadoRepository.instance.atualizarStatusAnimal(brinco, 'Morto');
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -38,7 +36,6 @@ class _FormMorteScreenState extends State<FormMorteScreen> {
         backgroundColor: Colors.black,
       ),
     );
-
     Navigator.pop(context, true);
   }
 

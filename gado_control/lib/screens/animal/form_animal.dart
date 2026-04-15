@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 import '../../core/services/calculos_service.dart';
+import '../../models/animal.dart';
 
 class FormAnimalScreen extends StatefulWidget {
   const FormAnimalScreen({Key? key}) : super(key: key);
@@ -28,7 +29,9 @@ class _FormAnimalScreenState extends State<FormAnimalScreen> {
   bool _entradaManual = false;
   String _carimboGerado = "";
 
-  // CORREÇÃO DO MICROFONE (Sem o late)
+  // === NOVA VARIÁVEL: Controla se o brinco tem letras ou só números ===
+  bool _brincoComLetras = false;
+
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   String _textoDigitadoAntes = "";
@@ -43,12 +46,12 @@ class _FormAnimalScreenState extends State<FormAnimalScreen> {
     setState(() {
       _entradaManual = false;
       final agora = DateTime.now();
-      String d = agora.day.toString().padLeft(2, '0');
-      String m = agora.month.toString().padLeft(2, '0');
-      String a = agora.year.toString();
-      String h = agora.hour.toString().padLeft(2, '0');
-      String min = agora.minute.toString().padLeft(2, '0');
-      _dataNascimentoController.text = "$d/$m/$a $h:$min";
+      String dia = agora.day.toString().padLeft(2, '0');
+      String mes = agora.month.toString().padLeft(2, '0');
+      String ano = agora.year.toString();
+      String hora = agora.hour.toString().padLeft(2, '0');
+      String minuto = agora.minute.toString().padLeft(2, '0');
+      _dataNascimentoController.text = "$dia/$mes/$ano $hora:$minuto";
       _carimboGerado = CalculosService.gerarCarimbo(agora);
     });
   }
@@ -103,7 +106,6 @@ class _FormAnimalScreenState extends State<FormAnimalScreen> {
       return;
     }
 
-    // REGRA DO BRINCO OPCIONAL
     String brincoFinal = _bezerroController.text.trim();
     if (brincoFinal.isEmpty) {
       brincoFinal =
@@ -140,7 +142,7 @@ class _FormAnimalScreenState extends State<FormAnimalScreen> {
     };
 
     try {
-      await DatabaseHelper.instance.inserirAnimal(novoAnimal);
+      await GadoRepository.instance.inserirAnimal(Animal.fromMap(novoAnimal));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -263,8 +265,8 @@ class _FormAnimalScreenState extends State<FormAnimalScreen> {
         const SizedBox(height: 10),
         TextFormField(
           controller: _matrizController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          keyboardType: TextInputType.text,
+          textCapitalization: TextCapitalization.characters,
           decoration: const InputDecoration(
             labelText: 'Número da Matriz (Opcional)',
             helperText: 'Deixe vazio se for desconhecida',
@@ -320,30 +322,89 @@ class _FormAnimalScreenState extends State<FormAnimalScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        TextFormField(
-          controller: _bezerroController,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          decoration: InputDecoration(
-            labelText: _origem == 'Nascimento'
-                ? 'Número do Bezerro (Opcional)'
-                : 'Número do Brinco (Opcional)',
-            helperText: 'Se vazio, o sistema gera uma identificação',
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.tag),
-          ),
+
+        // =========================================================
+        // A MÁGICA ACONTECE AQUI: BRINCO COM SWITCH INTELIGENTE
+        // =========================================================
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _bezerroController,
+                // Muda o teclado dinamicamente:
+                keyboardType: _brincoComLetras
+                    ? TextInputType.text
+                    : TextInputType.number,
+                // Força letras maiúsculas apenas se o switch estiver ligado:
+                textCapitalization: _brincoComLetras
+                    ? TextCapitalization.characters
+                    : TextCapitalization.none,
+                // Bloqueia letras ou não bloqueia letras:
+                inputFormatters: _brincoComLetras
+                    ? []
+                    : [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  labelText: _origem == 'Nascimento'
+                      ? 'Identificação do Bezerro'
+                      : 'Identificação / Brinco',
+                  helperText: _brincoComLetras
+                      ? 'Ex: NL-1234'
+                      : 'Apenas Números',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.tag),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+
+            // O Botão de Switch (Chaveta)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _brincoComLetras ? Colors.green[50] : Colors.grey[100],
+                border: Border.all(
+                  color: _brincoComLetras ? Colors.green : Colors.grey[300]!,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    "Letras?",
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  Switch(
+                    value: _brincoComLetras,
+                    activeColor: Colors.green,
+                    onChanged: (bool valor) {
+                      setState(() {
+                        _brincoComLetras = valor;
+                        // Opcional: Apaga o que estava escrito se o peão desligar as letras,
+                        // para evitar que um brinco tipo "NL" passe se o switch ficar desligado.
+                        if (!valor) _bezerroController.clear();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
+
+        // =========================================================
         const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
               child: TextFormField(
                 controller: _loteController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                keyboardType: TextInputType.text,
+                textCapitalization: TextCapitalization.characters,
                 decoration: const InputDecoration(
-                  labelText: 'Número do Lote',
-                  hintText: 'Ex: 101',
+                  labelText: 'Lote',
+                  hintText: 'Ex: 101 ou Lote A',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.numbers),
                 ),
@@ -355,6 +416,7 @@ class _FormAnimalScreenState extends State<FormAnimalScreen> {
             Expanded(
               child: TextFormField(
                 controller: _pastoController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   labelText: 'Pasto Atual',
                   border: OutlineInputBorder(),

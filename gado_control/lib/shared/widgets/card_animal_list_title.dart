@@ -1,281 +1,322 @@
 import 'package:flutter/material.dart';
-
-// Importe os formulários de manejo que já criámos!
+import '../../core/services/zootecnia_service.dart';
 import '../../screens/saude_reproducao/form_pesagem.dart';
 import '../../screens/saude_reproducao/form_doenca.dart';
 import '../../screens/saude_reproducao/form_vacinacao.dart';
 import '../../screens/saude_reproducao/form_inseminacao.dart';
+import '../../screens/animal/form_desmame.dart';
+import '../../screens/animal/form_morte.dart';
 
 class CardAnimalListTile extends StatelessWidget {
   final Map<String, dynamic> animal;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
+  final String modoLista; // 'Completo', 'Inseminacao', 'Desmame', 'Descarte'
 
-  const CardAnimalListTile({Key? key, required this.animal, this.onTap})
-    : super(key: key);
-
-  // Função auxiliar para abrir os modais de manejo sem sair da tela
-  void _abrirManejoRapido(BuildContext context, Widget formScreen) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => formScreen),
-    );
-  }
+  const CardAnimalListTile({
+    Key? key,
+    required this.animal,
+    required this.onTap,
+    this.modoLista = 'Completo', // Por padrão é completo
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final bool isMacho = animal['sexo'] == 'Macho';
     final bool isMorto = animal['status'] == 'Morto';
 
-    final String pasto =
-        (animal['pasto'] != null && animal['pasto'].toString().isNotEmpty)
-        ? animal['pasto']
-        : 'Sem Pasto';
-    final String lote =
-        (animal['lote'] != null && animal['lote'].toString().isNotEmpty)
-        ? animal['lote']
-        : 'Sem Lote';
-    final String? statusRepro = animal['status_reproducao'];
+    // Calcula a idade e categoria
+    final zootecnia = ZootecniaService.instance.classificarAnimal(
+      animal['data_nascimento'],
+      animal['sexo'],
+    );
+    String categoria = zootecnia['categoria'];
+    String idadeTexto = zootecnia['idade_texto'];
+    int mesesDeVida = zootecnia['meses'] ?? 0;
+    bool jaPassouDaIdadeDesmame = mesesDeVida > 12;
 
-    // Tratamento visual para os animais Sem Brinco (SN)
-    String numeroExibicao = animal['identificacao'];
-    bool isSemBrinco = numeroExibicao.startsWith('SN-');
+    Color corPrincipal = isMorto
+        ? Colors.grey[600]!
+        : (isMacho ? Colors.blue[700]! : Colors.pink[700]!);
+    Color corFundo = isMorto ? Colors.grey[200]! : Colors.white;
 
     return Card(
       elevation: 2,
+      color: corFundo,
       margin: const EdgeInsets.only(bottom: 12),
-      color: isMorto ? Colors.grey[300] : Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: isMorto ? null : onTap,
+        onTap: onTap, // Clicar no cartão inteiro abre o perfil
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          // Mudámos para Column para colocar os botões por baixo
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Row(
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // === PARTE SUPERIOR: INFORMAÇÕES ===
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   CircleAvatar(
-                    radius: 25,
-                    backgroundColor: isMorto
-                        ? Colors.grey[500]
-                        : (isMacho ? Colors.blue[100] : Colors.pink[100]),
+                    radius: 28,
+                    backgroundColor: corPrincipal.withOpacity(0.15),
                     child: Icon(
                       isMorto
                           ? Icons.warning
                           : (isMacho ? Icons.male : Icons.female),
-                      color: isMorto
-                          ? Colors.white
-                          : (isMacho ? Colors.blue[800] : Colors.pink[800]),
-                      size: 28,
+                      color: corPrincipal,
+                      size: 30,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
+
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          isSemBrinco
-                              ? 'Sem Brinco ($numeroExibicao)'
-                              : 'Brinco: $numeroExibicao',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                            color: isMorto
-                                ? Colors.grey[700]
-                                : (isSemBrinco
-                                      ? Colors.orange[800]
-                                      : Colors.black),
-                            decoration: isMorto
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Brinco: ${animal['identificacao']}',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isMorto
+                                    ? Colors.grey[700]
+                                    : Colors.black87,
+                                decoration: isMorto
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                            if (isMorto)
+                              const Text(
+                                'INATIVO',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 4),
-                        if (isMorto)
-                          const Text(
-                            "ANIMAL INATIVO (BAIXA)",
-                            style: TextStyle(
-                              color: Colors.red,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        else ...[
-                          Text(
-                            'Raça: ${animal['raca']}  |  Peso: ${animal['peso_atual'] ?? animal['peso_nascimento']} kg',
-                            style: TextStyle(color: Colors.grey[800]),
+
+                        // RESTAURADO: Lote e Pasto bem visíveis!
+                        Text(
+                          'Lote: ${animal['lote'] ?? '-'}  |  Pasto: ${animal['pasto'] ?? '-'}',
+                          style: TextStyle(
+                            color: Colors.grey[800],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                           ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: [
-                              _buildEtiqueta(Icons.grass, pasto, Colors.green),
-                              _buildEtiqueta(
-                                Icons.numbers,
-                                'Lote: $lote',
-                                Colors.orange,
-                              ),
-                              if (!isMacho && statusRepro != null)
-                                _buildEtiquetaReproducao(statusRepro),
-                            ],
-                          ),
-                        ],
+                        ),
+                        const SizedBox(height: 6),
+
+                        // ETIQUETAS INTELIGENTES (Chips)
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            _buildChip(categoria, corPrincipal),
+                            _buildChip(idadeTexto, Colors.orange[800]!),
+                            if (animal['raca'] != null)
+                              _buildChip(animal['raca'], Colors.brown),
+                          ],
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
-            ),
 
-            // ==========================================
-            // NOVA BARRA DE MANEJO RÁPIDO "POR FORA"
-            // ==========================================
-            if (!isMorto)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(12),
-                    bottomRight: Radius.circular(12),
-                  ),
-                  border: Border(top: BorderSide(color: Colors.grey[200]!)),
+              // === PARTE INFERIOR: BOTÕES DE MANEJO ===
+              if (!isMorto) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8.0),
+                  child: Divider(),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildBotaoManejo(
-                      context,
-                      Icons.scale,
-                      'Pesar',
-                      Colors.green,
-                      () => _abrirManejoRapido(
-                        context,
-                        FormPesagemScreen(animal: animal),
-                      ),
-                    ),
-                    _buildBotaoManejo(
-                      context,
-                      Icons.vaccines,
-                      'Vacinar',
-                      Colors.teal,
-                      () => _abrirManejoRapido(
-                        context,
-                        FormVacinacaoScreen(animal: animal),
-                      ),
-                    ),
-                    _buildBotaoManejo(
-                      context,
-                      Icons.medical_services,
-                      'Saúde',
-                      Colors.red,
-                      () => _abrirManejoRapido(
-                        context,
-                        FormDoencaScreen(animal: animal),
-                      ),
-                    ),
-                    if (!isMacho)
-                      _buildBotaoManejo(
-                        context,
-                        Icons.favorite,
-                        'Inseminar',
-                        Colors.pink,
-                        () => _abrirManejoRapido(
-                          context,
-                          FormInseminacaoScreen(animal: animal),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-          ],
+                _buildBarraDeBotoes(context, isMacho, jaPassouDaIdadeDesmame),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Widget para os pequenos botões de manejo no rodapé do cartão
-  Widget _buildBotaoManejo(
+  // LÓGICA DE QUAIS BOTÕES MOSTRAR DEPENDENDO DA TELA
+  Widget _buildBarraDeBotoes(
+    BuildContext context,
+    bool isMacho,
+    bool jaPassouDaIdade,
+  ) {
+    List<Widget> botoes = [];
+
+    if (modoLista == 'Completo') {
+      botoes = [
+        _buildBotaoAcao(
+          context,
+          Icons.vaccines,
+          'Vacinar',
+          Colors.teal,
+          FormVacinacaoScreen(animal: animal),
+        ),
+        _buildBotaoAcao(
+          context,
+          Icons.scale,
+          'Pesar',
+          Colors.green,
+          FormPesagemScreen(animal: animal),
+        ),
+        _buildBotaoAcao(
+          context,
+          Icons.medical_services,
+          'Saúde',
+          Colors.red,
+          FormDoencaScreen(animal: animal),
+        ),
+        // Acesso normal: Passa a regra restrita automaticamente (isVacaChance = false por padrão)
+        if (!isMacho)
+          _buildBotaoAcao(
+            context,
+            Icons.favorite,
+            'Inseminar',
+            Colors.pink,
+            FormInseminacaoScreen(animal: animal),
+          ),
+        if (!jaPassouDaIdade)
+          _buildBotaoAcao(
+            context,
+            Icons.grass,
+            'Desmamar',
+            Colors.orange,
+            FormDesmameScreen(animal: animal),
+          ),
+      ];
+
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: botoes),
+      );
+    } else if (modoLista == 'Inseminacao') {
+      return _buildBotaoAcao(
+        context,
+        Icons.favorite,
+        'Registar Inseminação',
+        Colors.pink,
+        FormInseminacaoScreen(animal: animal),
+        expandido: true,
+      );
+    } else if (modoLista == 'Desmame') {
+      return _buildBotaoAcao(
+        context,
+        Icons.grass,
+        'Registar Desmame',
+        Colors.orange,
+        FormDesmameScreen(animal: animal),
+        expandido: true,
+      );
+    } else if (modoLista == 'Descarte') {
+      // === LISTA DE REVISÃO / DESCARTE ===
+      // Aqui o produtor tem as duas opções finais
+      return Row(
+        children: [
+          Expanded(
+            child: _buildBotaoAcao(
+              context,
+              Icons.favorite,
+              'Dar Chance (IA)',
+              Colors.pink,
+              FormInseminacaoScreen(
+                animal: animal,
+                isVacaChance: true,
+              ), // A CHAVE DE ACESSO!
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildBotaoAcao(
+              context,
+              Icons.warning,
+              'Vender / Abater',
+              Colors.red[900]!,
+              FormMorteScreen(animal: animal),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  // Estilo das Etiquetas
+  Widget _buildChip(String texto, Color cor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: cor.withOpacity(0.1),
+        border: Border.all(color: cor.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        texto,
+        style: TextStyle(color: cor, fontSize: 11, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  // Construtor dos botões rápidos
+  Widget _buildBotaoAcao(
     BuildContext context,
     IconData icone,
-    String tooltip,
+    String texto,
     Color cor,
-    VoidCallback onTap,
-  ) {
-    return IconButton(
-      icon: Icon(icone, color: cor),
-      tooltip: tooltip, // Quando o peão segurar o dedo, aparece o nome da ação
-      splashRadius: 24,
-      onPressed: onTap,
-    );
-  }
-
-  // (Mantenha aqui os widgets _buildEtiqueta e _buildEtiquetaReproducao que já tínhamos)
-  Widget _buildEtiqueta(IconData icone, String texto, MaterialColor cor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: cor[50],
-        border: Border.all(color: cor[300]!),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icone, size: 12, color: cor[800]),
-          const SizedBox(width: 4),
-          Text(
-            texto,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: cor[900],
+    Widget formScreen, {
+    bool expandido = false,
+  }) {
+    Widget botao = InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => formScreen),
+        ).then(
+          (_) => onTap(),
+        ); // Ao fechar o formulário, recarrega a lista chamando o onTap do cartão
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.only(right: 8),
+        decoration: BoxDecoration(
+          color: cor.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: cor.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: expandido
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
+          children: [
+            Icon(icone, color: cor, size: 18),
+            const SizedBox(width: 6),
+            Text(
+              texto,
+              style: TextStyle(
+                color: cor,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
-  }
 
-  Widget _buildEtiquetaReproducao(String status) {
-    MaterialColor cor;
-    IconData icone = Icons.child_friendly;
-    if (status == 'Prenhe') {
-      cor = Colors.green;
-    } else if (status == 'Vazia') {
-      cor = Colors.red;
-      icone = Icons.cancel;
-    } else if (status == 'Aborto') {
-      cor = Colors.grey;
-      icone = Icons.warning;
-    } else {
-      cor = Colors.blue;
-      icone = Icons.hourglass_bottom;
+    if (expandido) {
+      return Row(children: [Expanded(child: botao)]);
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: cor,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icone, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(
-            status.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
+    return botao;
   }
 }

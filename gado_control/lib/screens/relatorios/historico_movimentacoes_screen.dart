@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../repositories/gado_repository.dart';
 
 class HistoricoMovimentacoesScreen extends StatefulWidget {
   const HistoricoMovimentacoesScreen({Key? key}) : super(key: key);
@@ -21,7 +21,7 @@ class _HistoricoMovimentacoesScreenState
   }
 
   Future<void> _carregarHistorico() async {
-    final dados = await DatabaseHelper.instance.listarMovimentacoes();
+    final dados = await GadoRepository.instance.listarMovimentacoes();
     setState(() {
       _movimentacoes = dados;
       _isLoading = false;
@@ -68,7 +68,6 @@ class _HistoricoMovimentacoesScreenState
         final mov = _movimentacoes[index];
         final bool isIndividual = mov['tipo_servico'] == 'Manejo Individual';
 
-        // Formata a data (se foi salva como ISO8601)
         String dataExibicao = mov['data_movimentacao'];
         if (dataExibicao.contains('T')) {
           final dataObj = DateTime.parse(dataExibicao);
@@ -120,8 +119,6 @@ class _HistoricoMovimentacoesScreenState
                   ],
                 ),
                 const SizedBox(height: 16),
-
-                // ORIGEM -> DESTINO VISUAL
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -151,9 +148,7 @@ class _HistoricoMovimentacoesScreenState
                     ),
                   ],
                 ),
-
                 const Divider(height: 24),
-
                 Row(
                   children: [
                     Icon(

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../core/database/db_helper.dart';
+import '../../core/services/zootecnia_service.dart';
 import 'menu_manejo.dart';
 import 'form_movimentacao.dart';
 import '../scanner/peao_scanner_screen.dart';
 import '../animal/form_animal.dart';
+import '../relatorios/configurar_cronograma_screen.dart';
+import '../relatorios/relatorio_vacinacao_screen.dart';
 
 class DashboardPeaoScreen extends StatefulWidget {
   const DashboardPeaoScreen({Key? key}) : super(key: key);
@@ -24,9 +26,9 @@ class _DashboardPeaoScreenState extends State<DashboardPeaoScreen> {
   }
 
   Future<void> _carregarNotificacoes() async {
-    final analiseRepro = await DatabaseHelper.instance
+    final analiseRepro = await ZootecniaService.instance
         .processarRegrasReprodutivas();
-    final listaDesmame = await DatabaseHelper.instance
+    final listaDesmame = await ZootecniaService.instance
         .listarBezerrosParaDesmame();
 
     if (mounted) {
@@ -43,12 +45,11 @@ class _DashboardPeaoScreenState extends State<DashboardPeaoScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Painel de Operações (Peão)'),
+        title: const Text('Painel de Operações'),
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
@@ -63,7 +64,6 @@ class _DashboardPeaoScreenState extends State<DashboardPeaoScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
-
       body: RefreshIndicator(
         onRefresh: _carregarNotificacoes,
         child: SingleChildScrollView(
@@ -107,7 +107,7 @@ class _DashboardPeaoScreenState extends State<DashboardPeaoScreen> {
                       () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => PeaoScannerScreen(),
+                          builder: (context) => const PeaoScannerScreen(),
                         ),
                       ),
                     ),
@@ -125,7 +125,6 @@ class _DashboardPeaoScreenState extends State<DashboardPeaoScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-
               _buildListaCard(
                 context,
                 'Lote de Inseminação',
@@ -154,6 +153,53 @@ class _DashboardPeaoScreenState extends State<DashboardPeaoScreen> {
                 Colors.red,
                 'Descarte',
                 _qtdDescarte,
+              ),
+              const SizedBox(height: 32),
+
+              const Text(
+                'Relatórios e Planeamento',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  // AQUI ESTÃO OS BOTÕES NOVOS PARA OS RELATÓRIOS!
+                  Expanded(
+                    child: _buildAcaoCard(
+                      context,
+                      'Resumo\nVacinas',
+                      Icons.vaccines,
+                      Colors.teal,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const RelatorioVacinacaoScreen(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildAcaoCard(
+                      context,
+                      'Cronograma',
+                      Icons.calendar_month,
+                      Colors.purple,
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const ConfigurarCronogramaScreen(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
 
